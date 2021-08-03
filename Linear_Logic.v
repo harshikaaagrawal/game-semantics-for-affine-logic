@@ -195,11 +195,6 @@ Inductive provable : seq syntax -> syntax -> Type :=
 (*--------------------------------------------------*)
 :          Ctx1 ++ [:: Left /\ Right ] ++ Ctx2 |- P  (* Ctx1, Left/\Right, Ctx2 |- P *)
 
-| And_intro_left Ctx Left Right
-    (a : Ctx |- Left)      (b : Ctx |- Right)
-(*--------------------------------------------------*)
-:             Ctx |- Left \/ Right
-
 where "Ctx |- A" := (provable Ctx%syntax A).
 Locate "++".
 (*
@@ -208,34 +203,83 @@ Left /\ Right |- Right
 
 (Ctx |- Left /\ Right) -> (Ctx |- Left)
 *)
-
-| And_use_left Left Right (a : provable (And Left Right)) : provable Left
-| And_use_right Left Right (a: provable (And Left Right)) : provable Right
+(*
 | Or_intro_left Left Right (a : provable Left): provable (Or Left Right)
 | Or_intro_right Left Right (a : provable Right): provable (Or Left Right)
+*)
 (*
 | Or_use Left Right P (a : provable Left -> provable P) (b : provable Right -> provable P)
       : (provable (Or Left Right) -> provable P)
 *)
-.
 
-Lemma check1 : provable True.
+Search ([::]) (_ ++ _).
+Lemma catss0 : forall [T : Type] (s1 s2 : seq T),
+  s1 ++ s2 = [::] -> s1 = [::] /\ s2 = [::].
+Proof.
+  Print "++".
+  
+Qed.
+
+(* In C:
+typedef struct Cell {
+  void* hd;
+  Cell* tl;
+} Cell;
+typedef Cell* seq;
+// NULL is empty list, cell is non-empty list
+
+// allocates a new list with head hd_value and tail tl_value
+seq cons(void* hd_value, seq tl_value) {
+  seq ret = (seq)malloc(sizeof(Cell));
+  ret->hd = hd_value;
+  ret->tl = tl_value;
+  return ret;
+}
+
+// copies a list (values in the list are reused without being copied)
+seq copy(seq s) {
+}
+
+// concatenates two sequences/lists
+seq cat(seq s1, seq s2) {
+  …
+}
+*)
+
+Lemma weaken_empty : forall Ctx A, ([:: ] |- A) -> (Ctx |- A).
+Proof.
+  intros Ctx A H.
+  dependent induction H.
+  { (*variable branch*)
+    (* an empty list has no elements, thus the statement is absurd*)
+    Search (_ \in [::]).
+    rewrite in_nil in a.
+    congruence. }
+  { apply Trivial.
+  }
+  { apply And_intro.
+    { apply IHprovable1.
+      reflexivity. }
+    { apply IHprovable2.
+      reflexivity.
+      }
+  }
+  {
+  
+Qed.
+
+Lemma check1 : [:: ] |- True.
 Proof.
   apply Trivial.
 Qed.
 
-Lemma check2 : provable (True /\ True).
+Lemma check2 : [:: ] |- True /\ True.
 Proof.
   apply And_intro;
   apply Trivial.
 Qed.
 
-Lemma check3 : provable (True /\ True).
-Proof.
-  eapply And_use_left.
-Abort.
-
-Lemma check3 : forall A B, provable (A /\ B) -> provable (B /\ A).
+Lemma check3 : forall A B, [:: A /\ B ] |- B /\ A.
 Proof.
   intros A B H.
   assert (a : provable A).
@@ -249,7 +293,7 @@ Proof.
   apply a.
 Qed.
 
-Lemma check4 : provable (True \/ False).
+Lemma check4 : [:: ] |- True \/ False.
 Proof.
   apply Or_intro_left.
   apply Trivial.
