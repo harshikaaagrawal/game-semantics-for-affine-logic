@@ -216,8 +216,23 @@ Search ([::]) (_ ++ _).
 Lemma catss0 : forall [T : Type] (s1 s2 : seq T),
   s1 ++ s2 = [::] -> s1 = [::] /\ s2 = [::].
 Proof.
-  Print "++".
-  
+  destruct s1.
+  {
+    simpl.
+    intros.
+    split.
+    {
+      reflexivity.
+    }
+    {
+      exact H.
+    }
+  }
+  {
+    simpl.
+    intros.
+    discriminate.
+  }
 Qed.
 
 (* In C:
@@ -264,8 +279,19 @@ Proof.
       reflexivity.
       }
   }
-  {
-  
+  { (* And_use case *)
+    (* absurd ctx1 with left right and  ctx2 are empty which is absurd *)
+    (* x proves that there's a list with [Left /\ Right] in the middle of it which is also empty; this is absurd *)
+    (* TODO: ask Rajee for help writing a comment that will remind future!Harshikaa how to do this case *)
+    exfalso.
+    clear -x.
+    apply catss0 in x.
+    destruct x as [a b].
+    apply catss0 in b.
+    destruct b as [c d].
+    discriminate.
+  }
+    
 Qed.
 
 Lemma check1 : [:: ] |- True.
