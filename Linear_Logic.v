@@ -484,8 +484,40 @@ Compute foldl mult 1 [:: 1; 2; 3].
 Compute foldl plus 0 [::].
 Compute foldl mult 1 [::].
 Definition truth_value_of_context (ctx : seq syntax) : bool
-  := foldl andb true (map truth_value ctx).
+  := foldr andb true (map truth_value ctx).
   
+Lemma truth_value_of_context_cons x ctx : truth_value_of_context (x :: ctx) = truth_value x && truth_value_of_context ctx.
+Proof.
+  reflexivity.
+Qed.
 Theorem boolean_consistency : forall Ctx P, (Ctx ||- P) ->  truth_value_of_context Ctx = true -> truth_value P = true.
-
+Proof.
+  intros Ctx P H T.
+  induction H.
+  {
+    
+  }
+  { 
+    simpl.
+    reflexivity.
+  }
+  {
+    simpl.
+    rewrite IHprovable1 // IHprovable2 //.
+  }
+  {
+    give_up.
+  }
+  {
+    simpl.
+    rewrite IHprovable//. 
+  }
+  {
+    simpl.
+    rewrite IHprovable//.
+    Search (_ || true).
+    rewrite Bool.orb_true_r.
+    reflexivity.
+    }
+        
 End Syntax2.
