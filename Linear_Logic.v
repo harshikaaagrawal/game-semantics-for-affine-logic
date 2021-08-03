@@ -1,9 +1,11 @@
 Require Import Coq.Program.Equality.
+Require Import Coq.btauto.Btauto.
 From Coq.ssr Require Import ssreflect ssrfun ssrbool.
 From mathcomp.ssreflect Require Import seq eqtype.
 
 Set Boolean Equality Schemes.
 Set Decidable Equality Schemes.
+
 
 Module Syntax1.
 (* int x = 5 + 6 * 7 *)
@@ -154,7 +156,7 @@ automatically parse those variables in syntax_scope *)
 Notation "A /\ B" := (And A B) : syntax_scope.
 Notation "A \/ B" := (Or A B) : syntax_scope.
 Print Grammar constr.
-Reserved Notation "Ctx |- A" (at level 100, no associativity).
+Reserved Notation "Ctx ||- A" (at level 100, no associativity).
 
 (* ssreflect magic to use decidable membership *)
 Lemma syntax_eqbP : Equality.axiom syntax_beq.
@@ -171,37 +173,51 @@ Inductive provable : seq syntax -> syntax -> Type :=
 | Provable_in Ctx A
      (a : A \in Ctx)
 (*------------------------------*)
-:          Ctx |- A
+:          Ctx ||- A
  
 (* either we can make these primitive rules, or we can set up the rules so that these two are provable *)
 (* look at https://math-comp.github.io/htmldoc/mathcomp.ssreflect.seq.html for lemmas about seq *)
 (*
-| Shuffle Ctx1 Ctx2 A (a : Ctx1 |- A) (perm : perm_eq Ctx1 Ctx2) : Ctx2 |- A
-| Weaken  Ctx1 Ctx2 A (a : Ctx1 |- A) (sub  : subseq  Ctx1 Ctx2) : Ctx2 |- A
+| Shuffle Ctx1 Ctx2 A (a : Ctx1 ||- A) (perm : perm_eq Ctx1 Ctx2) : Ctx2 ||- A
+| Weaken  Ctx1 Ctx2 A (a : Ctx1 ||- A) (sub  : subseq  Ctx1 Ctx2) : Ctx2 ||- A
 *)
 | Trivial Ctx
 
 (*------------------------------*)
-:         Ctx |- True
+:         Ctx ||- True
 
 | And_intro Ctx Left Right
-    (a : Ctx |- Left)      (b : Ctx |- Right)
+    (a : Ctx ||- Left)      (b : Ctx ||- Right)
 (*--------------------------------------------------*)
-:             Ctx |- Left /\ Right
+:             Ctx ||- Left /\ Right
 
 
 | And_use Ctx1 Ctx2 Left Right P
-      (a : Ctx1 ++ [:: Left  ; Right ] ++ Ctx2 |- P) (* Ctx1,Left,Right,Ctx2 |- P *)
+      (a : Ctx1 ++ [:: Left  ; Right ] ++ Ctx2 ||- P) (* Ctx1,Left,Right,Ctx2 ||- P *)
 (*--------------------------------------------------*)
-:          Ctx1 ++ [:: Left /\ Right ] ++ Ctx2 |- P  (* Ctx1, Left/\Right, Ctx2 |- P *)
+:          Ctx1 ++ [:: Left /\ Right ] ++ Ctx2 ||- P  (* Ctx1, Left/\Right, Ctx2 ||- P *)
 
-where "Ctx |- A" := (provable Ctx%syntax A).
+| Or_right_1 Ctx A B
+      (a : Ctx ||- A)
+(*--------------------------------------------------*)
+:   Ctx ||- A \/ B
+
+| Or_right_2 Ctx A B
+      (b : Ctx ||- B)
+(*--------------------------------------------------*)
+:   Ctx ||- A \/ B
+
+| Or_left Ctx1 Ctx2 A B P
+    (a : Ctx1 ++ [:: A] ++ Ctx2 ||- P)       (b : Ctx1 ++ [:: B] ++ Ctx2 ||- P) 
+(*--------------------------------------------------------------------------*)
+: Ctx1 ++ [:: A \/ B] ++ Ctx2 ||- P
+where "Ctx ||- A" := (provable Ctx%syntax A).
 Locate "++".
 (*
-Left /\ Right |- Left
-Left /\ Right |- Right
+Left /\ Right ||- Left
+Left /\ Right ||- Right
 
-(Ctx |- Left /\ Right) -> (Ctx |- Left)
+(Ctx ||- Left /\ Right) -> (Ctx ||- Left)
 *)
 (*
 | Or_intro_left Left Right (a : provable Left): provable (Or Left Right)
@@ -261,7 +277,7 @@ seq cat(seq s1, seq s2) {
 }
 *)
 
-Lemma weaken_empty : forall Ctx A, ([:: ] |- A) -> (Ctx |- A).
+Lemma weaken_empty : forall Ctx A, ([:: ] ||- A) -> (Ctx ||- A).
 Proof.
   intros Ctx A H.
   dependent induction H.
@@ -282,7 +298,6 @@ Proof.
   { (* And_use case *)
     (* absurd ctx1 with left right and  ctx2 are empty which is absurd *)
     (* x proves that there's a list with [Left /\ Right] in the middle of it which is also empty; this is absurd *)
-    (* TODO: ask Rajee for help writing a comment that will remind future!Harshikaa how to do this case *)
     exfalso.
     clear -x.
     apply catss0 in x.
@@ -291,55 +306,128 @@ Proof.
     destruct b as [c d].
     discriminate.
   }
-    
+  {
+    apply Or_right_1.
+    apply IHprovable.
+    trivial.
+  }
+  { apply Or_right_2.
+    apply IHprovable.
+    trivial.
+  }
+  { exfalso.
+    clear -x.
+    apply catss0 in x.
+    destruct x as [a b].
+    apply catss0 in b.
+    destruct b as [c d].
+    discriminate.
+  }
+     
 Qed.
 
-Lemma check1 : [:: ] |- True.
+Lemma check1 : [:: ] ||- True.
 Proof.
   apply Trivial.
 Qed.
 
-Lemma check2 : [:: ] |- True /\ True.
+Lemma check2 : [:: ] ||- True /\ True.
 Proof.
   apply And_intro;
   apply Trivial.
 Qed.
 
-Lemma check3 : forall A B, [:: A /\ B ] |- B /\ A.
+Lemma check3 : forall A B, [:: A /\ B ] ||- B /\ A.
 Proof.
-  intros A B H.
-  assert (a : provable A).
-  { eapply And_use_left.
-    apply H. }
-  assert (b : provable B).
-  { eapply And_use_right.
-    apply H. }
+  intros A B.
+  apply (And_use [::] [::] A B).
+  simpl.
   apply And_intro.
-  apply b.
-  apply a.
+  {
+    apply Provable_in.
+    Search (cons _ _) (_ \in _).
+    rewrite in_cons.
+    rewrite mem_head.
+    Search (_ || true).
+    apply orbT.
+  }
+  { apply Provable_in.
+    rewrite mem_head.
+    trivial.
+  }
 Qed.
 
-Lemma check4 : [:: ] |- True \/ False.
+Lemma check4 : [:: ] ||- True \/ False.
 Proof.
-  apply Or_intro_left.
+  apply Or_right_1.
   apply Trivial.
 Qed.
   
-Lemma check5 : provable (False \/ True).
+Lemma check5 : [::] ||- (False \/ True).
 Proof.
-  apply Or_intro_right.
+  apply Or_right_2.
   apply Trivial.
 Qed.
 
-Lemma check6 : forall A B, provable (A \/ B) -> provable (B \/ A).
+Lemma check6 : forall A B,[:: A \/ B] ||- (B \/ A).
 Proof.
-  intros A B H.  
-Abort.
+  intros A B.
+  apply (Or_left [::] [::] A B).
+  {
+    simpl.
+    apply Or_right_2.
+    apply Provable_in.
+    rewrite mem_head.
+    trivial.
+  }
+  { simpl.
+    apply Or_right_1.
+    apply Provable_in.
+    rewrite mem_head.
+    trivial.
+  }
+Qed.  
 
-Lemma consistent : provable False -> Logic.False.
+(** Previously, we were copy-pasting
+<<<
+    exfalso.
+    clear -x.
+    apply catss0 in x.
+    destruct x as [a b].
+    apply catss0 in b.
+    destruct b as [c d].
+    discriminate.
+>>>
+to prove goals like
+>>>
+1 subgoal
+Ctx1, Ctx2 : seq syntax
+Left, Right : syntax
+proof : Ctx1 ++ [:: Left; Right] ++ Ctx2 ||- False
+IHproof : Ctx1 ++ [:: Left; Right] ++ Ctx2 = [::] ->
+          False = False -> Logic.False
+x : Ctx1 ++ [:: (Left /\ Right)%syntax] ++ Ctx2 = [::]
+______________________________________(1/1)
+Logic.False
+>>>
+
+Now we write a tactic to handle all goals which have a hypothesis which says that some concatenation of lists is empty.
+*)
+Ltac absurd_from_empty_cat :=
+  repeat match goal with
+         | [ H : _ ++ _ = [::] |- _ ] => apply catss0 in H
+         | [ H : _ /\ _        |- _ ] => destruct H
+         | [ H : _ :: _ = [::] |- _ ] => exfalso; discriminate
+         end.
+
+Lemma consistent : ([::] ||- False) -> Logic.False.
 Proof.
   intro proof.
-  Locate False.
-  dependent induction proof.
+  dependent induction proof; try solve [ absurd_from_empty_cat ].
+  {
+    Search (_ \in [::]).
+    rewrite in_nil in a.
+    congruence.
+  }
 Qed.
 End Syntax1.
