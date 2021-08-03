@@ -155,6 +155,9 @@ Bind Scope syntax_scope with syntax. (* means that functions taking variables of
 automatically parse those variables in syntax_scope *)
 Notation "A /\ B" := (And A B) : syntax_scope.
 Notation "A \/ B" := (Or A B) : syntax_scope.
+Notation "A -> B" := (Implication A B) : syntax_scope.
+Notation "~ A" := (Negation A) : syntax_scope.
+Notation "A <-> B" := (Biconditional A B) : syntax_scope.
 Print Grammar constr.
 Reserved Notation "Ctx ||- A" (at level 100, no associativity).
 
@@ -430,4 +433,59 @@ Proof.
     congruence.
   }
 Qed.
-End Syntax1.
+
+
+Lemma consistent2 : ([:: True /\ True ] ||- False) -> Logic.False.
+Proof.
+  intro proof.
+  dependent induction proof; try solve [ absurd_from_empty_cat ].
+  {
+    Search (_ \in [::]).
+    Search (_ \in _ :: _).
+    rewrite !in_cons in a.
+    rewrite in_nil in a.
+    simpl in a.
+    congruence.
+  }
+  { assert (Ctx1 = [::]) by (destruct Ctx1 as [|? [|]]; simpl in *; congruence).
+    simpl in *.
+    subst; simpl in *.
+    assert (Ctx2 = [::]) by (destruct Ctx2 as [|? [|]]; simpl in *; congruence).
+    subst; simpl in *.
+    assert (Left = True) by congruence.
+    assert (Right = True) by congruence.
+    subst.
+Abort.
+
+Print syntax.
+Print "&&".
+Fixpoint truth_value (x : syntax) : bool
+  := match x with
+     | True => true
+     | False => false
+     | And l r => truth_value l && truth_value r
+     | Or l r => truth_value l || truth_value r
+     | Implication l r => if truth_value l then truth_value r else true
+     | Negation r => negb (truth_value r)
+     | Biconditional l r => Bool.eqb (truth_value l) (truth_value r)
+     end.
+     
+Compute truth_value (True).
+Compute truth_value (True /\ False).
+Compute truth_value (True -> False).
+Compute truth_value (True <-> False).
+
+Search "fold".
+(* Fold (op) init list := accumulate list into init using op *)
+Eval cbv [foldl] in foldl plus 0 [:: 1; 2; 3].
+Compute foldl plus 10 [:: 2; 3; 4; 5].
+Compute foldl max 0 [:: 1; 3; 0].
+Compute foldl mult 1 [:: 1; 2; 3].
+Compute foldl plus 0 [::].
+Compute foldl mult 1 [::].
+Definition truth_value_of_context (ctx : seq syntax) : bool
+  := foldl andb true (map truth_value ctx).
+  
+Theorem boolean_consistency : forall Ctx P, (Ctx ||- P) ->  truth_value_of_context Ctx = true -> truth_value P = true.
+
+End Syntax2.
