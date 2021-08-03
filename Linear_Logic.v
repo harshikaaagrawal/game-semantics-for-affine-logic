@@ -1,165 +1,118 @@
-Print nat.
-Check O.
-Check S O.
-Check 3.
-Check 30.
-Check 30000.
+Definition iffb (a b : bool) : bool
+  := negb (xorb a b).
 
-Definition plus_one (n : nat) : nat := S n.
-Definition pred (n : nat) : nat :=
-  match n with
-  | O => O
-  | S m => m
-  end.
-Compute pred 5.
+Notation "~ x" := (negb x) : bool_scope.
+Infix "<->" := iffb : bool_scope.
+Infix "->" := implb : bool_scope.
+
+Lemma chapter_1_3_g : exists P Q,
+(~(((~P) && (~Q)) <-> ~(P && (~Q))))%bool
+  = true.
+Proof.
+  unshelve (do 2 econstructor);
+    constructor.
+Qed.
+Print chapter_1_3_g.
+
 (*
-Notation "( x ) = ( y )" := (eq x y) (format "'[hv' '[hv' ( '[hv ' x ']' ) ']' '//' = '//' '[hv' ( '[hv ' y ']' ) ']' ']'").
+A := string
+B := int
+C := float
+
+int string_to_int(string a); // f
+
+float int_to_float(int b); // g
+
+float string_to_float(string a) {
+  return int_to_float(string_to_int(a));
+}
+
 *)
-Lemma pred_S : forall n : nat, pred (S n) = n.
+
+Definition compose {A B C}
+  (f : A -> B) (g : B -> C)
+ : A -> C
+ := fun a : A => g (f a).
+
+Section chapter_1_6.
+Context (P Q R : Prop)
+        (PQ : P <-> Q)
+        (QR : Q <-> R).
+Lemma chapter_1_6_a : Q <-> P.
 Proof.
-  cbv delta [pred]. cbv beta. cbv match. cbv beta.
-  reflexivity.
+  destruct PQ as [P_Q Q_P].
+  destruct QR as [Q_R R_Q].
+  constructor.
+  { exact Q_P. }
+  { exact P_Q. }
 Qed.
-Lemma S_pred : forall n : nat, S (pred n) = n.
+
+Lemma chapter_1_6_b : P <-> R.
 Proof.
-  cbv delta [pred]. cbv beta.
-  destruct n.
-Abort.
-Fixpoint add (x y : nat) : nat :=
-  match y with
-  | O => x
-  | S y' (* y = S y', i.e., y' = y-1 *) => add (S x) y'
-  end.
-Compute add 3 4.
-Compute add 2 5.
-Compute add 10 13.
-Infix "+" := add : nat_scope.
-Notation "x '.+1'" := (S x) (format "x '.+1'", at level 9) : nat_scope.
-(*Notation "( ( x )  + ( y ) )" := (add x y) : nat_scope.*)
-Lemma add_S_r_alt : forall x y : nat, x + (S y) = S (x + y).
-Proof.
-  intros x y; revert x.
-  pose y as CASE.
-  induction y as [|y' IH].
-  { cbn [add]. reflexivity. }
-  { cbv zeta in IH.
-    cbn [add] in *.
-    intro n.
-    specialize (IH (n.+1)).
-    assumption. }
+  destruct PQ as [P_Q Q_P].
+  destruct QR as [Q_R R_Q].
+  constructor.
+  { exact (compose P_Q Q_R). }
+  { exact (compose R_Q Q_P). }
 Qed.
-(*
-Lemma add_1_l : forall n, 1 + n = S n.
+
+Lemma chapter_1_6_c: ~Q <-> ~P.
 Proof.
-  intro n.
-  pose n as CASE.
-  induction n as [|n' IH].
-  { cbn [add]. reflexivity. }
-  { cbv zeta in IH.
-    cbn [add] in *.
-*)
-Lemma add_comm_0 : forall n : nat, n + 0 = 0 + n.
-Proof.
-  intro n.
-  pose n as CASE.
-  induction n as [|n' IH].
-  { reflexivity. }
-  { cbv zeta in IH.
-    cbn [add] in IH.
-    rewrite add_S_r_alt.
-    cbn [add].
-    congruence. Undo.
-    rewrite <- IH. (* replace 0+n' with n' *)
-    reflexivity. }
+  unfold "~".
+  destruct PQ as [P_Q Q_P].
+  constructor.
+  { intro f.
+    exact (compose P_Q f). }
+  { intro g.
+  exact (compose Q_P g). }
 Qed.
-Lemma add_comm_S : forall n m : nat, n + S m = S m + n.
-Proof.
-  intro n.
-  pose n as CASE.
-  induction n as [|n' IH].
-  { intro m. rewrite add_S_r_alt.
-    rewrite <- add_comm_0. (* cbn [add]. reflexivity. }
-  { cbv zeta in IH.
-    cbn [add] in IH.
-    rewrite add_S_r_alt.
-    cbn [add].
-    congruence. Undo.
-    rewrite <- IH. (* replace 0+n' with n' *)
-    reflexivity. } *)
-(* TODO Later *)
-Abort.
 
-Require Import ZArith QArith Lia PArith Znumtheory.
-Local Open Scope Z_scope. Local Open Scope Q_scope.
-Search (Z -> Q).
-Coercion inject_Z : Z >-> Q.
-Coercion Z.pos : positive >-> Z.
-Local Open Scope Z_scope.
-Lemma sqrt_two_irrational_helper_2 : forall x y : Z,
-  x * x = 2 * y * y -> (2 | x).
+Lemma chapter_1_6_d: P /\ Q <-> Q /\ R.
 Proof.
-  intros x y Hxx2yy.
-  assert (Hxxdiv : (2 | x * x)).
-  Search Z.divide.
-  { rewrite Hxx2yy, <- Z.mul_assoc.
-    apply Z.divide_factor_l. }
-  assert (two_prime : prime 2) by apply prime_2.
-  apply prime_mult in Hxxdiv; [ | apply prime_2 ].
-  destruct Hxxdiv; assumption.
+  destruct PQ as [P_Q Q_P].
+  destruct QR as [Q_R R_Q].
+  constructor.
+  { intro f.
+    destruct f as [g h].
+    constructor.
+    { exact h. }
+    { exact (Q_R h). }
+  }
+  { intro a.
+  destruct a as [b c].
+  constructor.
+  { exact (Q_P b). }
+{ exact b. }
+}
 Qed.
-Lemma sqrt_two_irrational_helper : forall (x : Z) (y : positive),
-  Z.gcd x y = 1 -> x * x = 2 * y * y -> False.
+
+Lemma or_comm: P \/ Q <-> Q \/ P.
 Proof.
-  intros x y Hreduced.
-  intro Hxx2yy.
-  assert (Hx_even : (2 | x)) by now eapply sqrt_two_irrational_helper_2; eassumption.
-  Print Z.divide.
-  unfold Z.divide in Hx_even.
-  destruct Hx_even as [z Hx_even].
-  subst x.
-  assert (Hyy2zz : y * y = 2 * z * z) by nia.
-  assert (Hy_even : (2 | y)) by now eapply sqrt_two_irrational_helper_2; eassumption.
-  unfold Z.divide in Hy_even.
-  destruct Hy_even as [w Hy_even].
-  symmetry in Hy_even; destruct Hy_even; clear y.
-  clear -Hreduced.
-  Search (Z.gcd (_ * _) (_ * _)).
-  rewrite Z.gcd_mul_mono_r in Hreduced.
-  cbn [Z.abs] in Hreduced.
-  nia.
+  clear PQ QR.
+  constructor.
+  { intro f.
+    destruct f as [f|f].
+    { right. 
+      exact f. }
+    { left.
+      exact f. }
+  }
+  {
+  
+  }
 Qed.
-Local Open Scope Q_scope.
-Print Qred.
-Search Z.ggcd.
-(* TODO: make this work with Q *)
-Theorem sqrt_two_irrational : forall q : Q, q * q = 2 -> False.
+
+Lemma chapter_1_6_e: P \/ Q <-> Q \/ R.
 Proof.
-  intro q.
-  intro H.
-  apply (f_equal Qred) in H.
-  Search Qred Qmult.
-  Search Qred.
-Abort.
-Close Scope Q_scope.
-
-Require Import Coq.Lists.List.
-Require Import Coq.Sorting.Permutation.
-Import ListNotations.
-Open Scope list_scope.
-Coercion Z.to_nat : Z >-> nat.
-Coercion Z.of_nat : nat >-> Z.
-(*
-Compute let a := 4 in let p := 3 in List.map (fun x : nat => a * x) (seq 1 (p - 1)).
-*)
-Theorem fermat_little : forall a p : Z, prime p -> ~(p | a) -> a^(p-1) mod p = 1 mod p.
-Proof.
-  intros a p p_prime p_not_divide_a.
-  pose (multiples_of_a := List.map (fun x : nat => (a * x) mod p) (seq 1 (p - 1))).
-  pose (permuted := List.map Z.of_nat (seq 1 (p - 1))).
-  assert (H : Permutation multiples_of_a permuted).
-  { 
-
-
-
-
-
+  destruct PQ as [P_Q Q_P].
+  destruct QR as [Q_R R_Q].
+  constructor.
+  { intro f.
+    destruct f as [f|f].
+    { right. 
+      exact (f). }
+    { }
+  }
+  {
+  }
+Qed.
