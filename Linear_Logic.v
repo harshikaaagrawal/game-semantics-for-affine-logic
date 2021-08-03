@@ -116,3 +116,46 @@ Proof.
   {
   }
 Qed.
+
+Lemma example : forall a b x, a = x*x - 4 -> b = (x + 2) * (x - 2) -> a = b.
+Proof.
+  
+Qed.
+
+Lemma conjunction : forall a b, a /\ b -> b /\ a.
+Proof.
+  clear.
+  intros a b ab.
+  destruct ab.
+  constructor.
+  - assumption.
+  - assumption.
+Qed.
+
+Lemma disjunction : forall a b, a \/ b -> b \/ a.
+Proof.
+  clear.
+  intros a b ab.
+  destruct ab.
+  - constructor 2.
+    assumption.
+  - constructor 1.
+    assumption.
+Qed.
+
+
+Lemma triviality : True -> True.
+Proof.
+  clear.
+  intros trivial.
+  destruct trivial eqn:h.
+  constructor.
+Qed.
+
+Lemma absurdity : False -> False.
+Proof.
+  clear.
+  intros absurd.
+  Fail constructor.
+  destruct absurd.
+Qed.
