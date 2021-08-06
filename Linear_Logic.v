@@ -490,13 +490,76 @@ Lemma truth_value_of_context_cons x ctx : truth_value_of_context (x :: ctx) = tr
 Proof.
   reflexivity.
 Qed.
+
+Lemma foldr_cat_assoc A (s1 s2 : seq A) (init : A) (op : A -> A -> A)
+  (init_idl : forall x, op init x = x) 
+  (op_assoc : forall a b c, op a (op b c) = op (op a b) c)
+: foldr op init (s1 ++ s2) = op (foldr op init s1) (foldr op init s2).
+Proof.
+  induction s1.
+  {
+    simpl.
+    rewrite init_idl.
+    reflexivity.
+  }
+  {
+    simpl.
+    rewrite IHs1.
+    rewrite op_assoc.
+    reflexivity.
+  }
+Qed.
+
+Search "assoc" andb.
+
+Lemma truth_value_of_context_cat Ctx1 Ctx2
+: truth_value_of_context (Ctx1 ++ Ctx2) = truth_value_of_context Ctx1 && truth_value_of_context Ctx2.
+Proof.
+  unfold truth_value_of_context.
+  Search map cat.
+  rewrite map_cat.
+  Search foldr cat.
+  Search foldr.
+  rewrite foldr_cat_assoc//.
+  apply Bool.andb_assoc.
+Qed.
+
+Lemma truth_value_of_context_nil 
+: truth_value_of_context [::] = true.
+Proof.
+  reflexivity.
+Qed.
+
 Theorem boolean_consistency : forall Ctx P, (Ctx ||- P) ->  truth_value_of_context Ctx = true -> truth_value P = true.
 Proof.
   intros Ctx P H T.
   induction H.
   {
+    induction Ctx.
+    {
     
+      Search (_ \in [::]).
+      rewrite in_nil in a.
+      congruence.
+    }
+    {
+      Search (_ \in _ :: _).
+      rewrite in_cons in a.
+      rewrite truth_value_of_context_cons in T.
+      revert a T.
+      
+      move => /orP [/eqP a|a] => /andP [T1 T2].
+      {
+        hnf in T1.
+        subst a0.
+        exact T1.
+      }
+      {
+        info_auto.
+      }
+    }
   }
+  
   { 
     simpl.
     reflexivity.
@@ -506,7 +569,14 @@ Proof.
     rewrite IHprovable1 // IHprovable2 //.
   }
   {
-    give_up.
+    rewrite -> ?truth_value_of_context_cat in *.
+    rewrite -> ?truth_value_of_context_cons in *.
+    rewrite -> ?truth_value_of_context_nil in *.
+    simpl in *.
+    rewrite -> ?Bool.andb_assoc in *.
+    Search (_ && true).
+    rewrite -> ?Bool.andb_true_r in *.
+    auto.
   }
   {
     simpl.
@@ -518,6 +588,20 @@ Proof.
     Search (_ || true).
     rewrite Bool.orb_true_r.
     reflexivity.
-    }
-        
+  }
+  { 
+    rewrite -> ?truth_value_of_context_cat in *.
+    rewrite -> ?truth_value_of_context_cons in *.
+    rewrite -> ?truth_value_of_context_nil in *.
+    simpl in *.
+    rewrite -> ?Bool.andb_true_iff in *.
+    rewrite -> ?Bool.orb_true_iff in *.
+    decompose [and or] T; auto.
+  }
+Qed.
+
+Theorem boolean_consistency_converse : forall P Ctx, (Ctx ||- P) ->  truth_value_of_context Ctx = true -> truth_value P = true.
+Proof.
+        intros Ctx P H T.
+        induction H.
 End Syntax2.
