@@ -189,6 +189,12 @@ Inductive provable : seq syntax -> syntax -> Type :=
 (*------------------------------*)
 :         Ctx ||- True
 
+| Absurd Ctx1 Ctx2 P
+
+(*------------------------------*)
+: Ctx1 ++ [:: False] ++ Ctx2 ||- P
+
+
 | And_intro Ctx Left Right
     (a : Ctx ||- Left)      (b : Ctx ||- Right)
 (*--------------------------------------------------*)
@@ -280,6 +286,38 @@ seq cat(seq s1, seq s2) {
 }
 *)
 
+(** Previously, we were copy-pasting
+<<<
+    exfalso.
+    clear -x.
+    apply catss0 in x.
+    destruct x as [a b].
+    apply catss0 in b.
+    destruct b as [c d].
+    discriminate.
+>>>
+to prove goals like
+>>>
+1 subgoal
+Ctx1, Ctx2 : seq syntax
+Left, Right : syntax
+proof : Ctx1 ++ [:: Left; Right] ++ Ctx2 ||- False
+IHproof : Ctx1 ++ [:: Left; Right] ++ Ctx2 = [::] ->
+          False = False -> Logic.False
+x : Ctx1 ++ [:: (Left /\ Right)%syntax] ++ Ctx2 = [::]
+______________________________________(1/1)
+Logic.False
+>>>
+
+Now we write a tactic to handle all goals which have a hypothesis which says that some concatenation of lists is empty.
+*)
+Ltac absurd_from_empty_cat :=
+  repeat match goal with
+         | [ H : _ ++ _ = [::] |- _ ] => apply catss0 in H
+         | [ H : _ /\ _        |- _ ] => destruct H
+         | [ H : _ :: _ = [::] |- _ ] => exfalso; discriminate
+         end.
+
 Lemma weaken_empty : forall Ctx A, ([:: ] ||- A) -> (Ctx ||- A).
 Proof.
   intros Ctx A H.
@@ -288,15 +326,22 @@ Proof.
     (* an empty list has no elements, thus the statement is absurd*)
     Search (_ \in [::]).
     rewrite in_nil in a.
-    congruence. }
-  { apply Trivial.
+    congruence. 
   }
+  { 
+    apply Trivial.
+  }
+  {
+    absurd_from_empty_cat.
+  }
+  
   { apply And_intro.
     { apply IHprovable1.
-      reflexivity. }
+      reflexivity.
+    }
     { apply IHprovable2.
       reflexivity.
-      }
+    }
   }
   { (* And_use case *)
     (* absurd ctx1 with left right and  ctx2 are empty which is absurd *)
@@ -391,37 +436,6 @@ Proof.
   }
 Qed.  
 
-(** Previously, we were copy-pasting
-<<<
-    exfalso.
-    clear -x.
-    apply catss0 in x.
-    destruct x as [a b].
-    apply catss0 in b.
-    destruct b as [c d].
-    discriminate.
->>>
-to prove goals like
->>>
-1 subgoal
-Ctx1, Ctx2 : seq syntax
-Left, Right : syntax
-proof : Ctx1 ++ [:: Left; Right] ++ Ctx2 ||- False
-IHproof : Ctx1 ++ [:: Left; Right] ++ Ctx2 = [::] ->
-          False = False -> Logic.False
-x : Ctx1 ++ [:: (Left /\ Right)%syntax] ++ Ctx2 = [::]
-______________________________________(1/1)
-Logic.False
->>>
-
-Now we write a tactic to handle all goals which have a hypothesis which says that some concatenation of lists is empty.
-*)
-Ltac absurd_from_empty_cat :=
-  repeat match goal with
-         | [ H : _ ++ _ = [::] |- _ ] => apply catss0 in H
-         | [ H : _ /\ _        |- _ ] => destruct H
-         | [ H : _ :: _ = [::] |- _ ] => exfalso; discriminate
-         end.
 
 Lemma consistent : ([::] ||- False) -> Logic.False.
 Proof.
@@ -447,14 +461,15 @@ Proof.
     simpl in a.
     congruence.
   }
-  { assert (Ctx1 = [::]) by (destruct Ctx1 as [|? [|]]; simpl in *; congruence).
+  {
+   (*assert (Ctx1 = [::]) by (destruct Ctx1 as [|? [|]]; simpl in *; congruence).
     simpl in *.
     subst; simpl in *.
     assert (Ctx2 = [::]) by (destruct Ctx2 as [|? [|]]; simpl in *; congruence).
     subst; simpl in *.
     assert (Left = True) by congruence.
     assert (Right = True) by congruence.
-    subst.
+    subst.*)
 Abort.
 
 Print syntax.
@@ -565,6 +580,15 @@ Proof.
     reflexivity.
   }
   {
+    rewrite -> ?truth_value_of_context_cat in *.
+    rewrite -> ?truth_value_of_context_cons in *.
+    rewrite -> ?truth_value_of_context_nil in *.
+    simpl in *.
+    Search (_ && false).
+    rewrite Bool.andb_false_r in T.
+    congruence.
+  }
+  {
     simpl.
     rewrite IHprovable1 // IHprovable2 //.
   }
@@ -600,8 +624,26 @@ Proof.
   }
 Qed.
 
-Theorem boolean_consistency_converse : forall P Ctx, (Ctx ||- P) ->  truth_value_of_context Ctx = true -> truth_value P = true.
+Lemma absurd_context_proves_P : forall Ctx P, truth_value_of_context Ctx = false -> Ctx ||- P.
 Proof.
-        intros Ctx P H T.
-        induction H.
+Abort.
+  
+Theorem boolean_consistency_converse : forall P Ctx,
+(truth_value_of_context Ctx = true -> truth_value P = true) -> (Ctx ||- P).
+Proof.
+  intros P Ctx H.
+  induction P.
+  {
+    Search (True).
+    apply Trivial.
+  }
+  {
+    simpl in *.
+    destruct (truth_value_of_context Ctx) eqn:T.
+    {
+      intuition congruence.
+    }
+Abort.
+      
+  
 End Syntax2.
