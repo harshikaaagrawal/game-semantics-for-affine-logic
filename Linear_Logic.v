@@ -121,6 +121,60 @@ Inductive provable : seq syntax -> syntax -> Type :=
 
 where "Ctx ||- A" := (provable Ctx%syntax A).
 
+Lemma catss0 : forall [T : Type] (s1 s2 : seq T),
+  s1 ++ s2 = [::] -> s1 = [::] /\ s2 = [::].
+Proof.
+  destruct s1.
+  {
+    simpl.
+    intros.
+    split.
+    {
+      reflexivity.
+    }
+    {
+      exact H.
+    }
+  }
+  {
+    simpl.
+    intros.
+    discriminate.
+  }
+Qed.
+
+(** Previously, we were copy-pasting
+<<<
+    exfalso.
+    clear -x.
+    apply catss0 in x.
+    destruct x as [a b].
+    apply catss0 in b.
+    destruct b as [c d].
+    discriminate.
+>>>
+to prove goals like
+>>>
+1 subgoal
+Ctx1, Ctx2 : seq syntax
+Left, Right : syntax
+proof : Ctx1 ++ [:: Left; Right] ++ Ctx2 ||- False
+IHproof : Ctx1 ++ [:: Left; Right] ++ Ctx2 = [::] ->
+          False = False -> Logic.False
+x : Ctx1 ++ [:: (Left /\ Right)%syntax] ++ Ctx2 = [::]
+______________________________________(1/1)
+Logic.False
+>>>
+
+Now we write a tactic to handle all goals which have a hypothesis which says that some concatenation of lists is empty.
+*)
+Ltac absurd_from_empty_cat :=
+  repeat match goal with
+         | [ H : _ ++ _ = [::] |- _ ] => apply catss0 in H
+         | [ H : _ /\ _        |- _ ] => destruct H
+         | [ H : _ :: _ = [::] |- _ ] => exfalso; discriminate
+         end.
+
 Fixpoint truth_value (x : syntax) : bool
   := match x with
      | One => true
@@ -134,6 +188,66 @@ Fixpoint truth_value (x : syntax) : bool
 Definition truth_value_of_context (ctx : seq syntax) : bool
   := foldr andb true (map truth_value ctx).
   
+Lemma truth_value_of_context_cons x ctx : truth_value_of_context (x :: ctx) = truth_value x && truth_value_of_context ctx.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma foldr_cat_assoc A (s1 s2 : seq A) (init : A) (op : A -> A -> A)
+  (init_idl : forall x, op init x = x) 
+  (op_assoc : forall a b c, op a (op b c) = op (op a b) c)
+: foldr op init (s1 ++ s2) = op (foldr op init s1) (foldr op init s2).
+Proof.
+  induction s1.
+  {
+    simpl.
+    rewrite init_idl.
+    reflexivity.
+  }
+  {
+    simpl.
+    rewrite IHs1.
+    rewrite op_assoc.
+    reflexivity.
+  }
+Qed.
+
+Search "assoc" andb.
+
+Lemma truth_value_of_context_cat Ctx1 Ctx2
+: truth_value_of_context (Ctx1 ++ Ctx2) = truth_value_of_context Ctx1 && truth_value_of_context Ctx2.
+Proof.
+  unfold truth_value_of_context.
+  Search map cat.
+  rewrite map_cat.
+  Search foldr cat.
+  Search foldr.
+  rewrite foldr_cat_assoc//.
+  apply Bool.andb_assoc.
+Qed.
+
+Lemma truth_value_of_context_nil 
+: truth_value_of_context [::] = true.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma truth_value_of_context_perm Ctx1 Ctx2 : perm_eq Ctx1 Ctx2 -> truth_value_of_context Ctx1 = truth_value_of_context Ctx2.
+Proof.
+  Search perm_eq.
+  Check catCA_perm_ind.
+Admitted.
+
 Theorem boolean_consistency : forall Ctx P, (Ctx ||- P) ->  truth_value_of_context Ctx = true -> truth_value P = true.
 Proof.
-     
+  intros Ctx P H T.
+  induction H;
+  rewrite -> ?truth_value_of_context_cat, -> ?truth_value_of_context_cons, -> ?truth_value_of_context_nil, -> ?Bool.andb_true_r in *.
+  {
+    congruence.
+  }
+  {
+    give_up.
+  }
+  {
+   
