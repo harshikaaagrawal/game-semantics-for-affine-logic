@@ -232,22 +232,203 @@ Proof.
   reflexivity.
 Qed.
 
+Search perm_eq.
+Check catCA_perm_ind.
+
 Lemma truth_value_of_context_perm Ctx1 Ctx2 : perm_eq Ctx1 Ctx2 -> truth_value_of_context Ctx1 = truth_value_of_context Ctx2.
 Proof.
   Search perm_eq.
   Check catCA_perm_ind.
-Admitted.
+  intros A.
+  pose proof (@catCA_perm_ind _ 
+    (fun Ctx2 => truth_value_of_context Ctx1 = truth_value_of_context Ctx2)) as H.
+  cbv beta in H.
+  apply H with (s1 := Ctx1).
+  {
+    clear.
+    intros s1 s2 s3 A.
+    rewrite A.
+    clear.
+    rewrite !truth_value_of_context_cat.
+    Search (?A && ?B = ?B && ?A).
+    Search (_ && _ = _ && _).
+    rewrite !Bool.andb_assoc.
+    rewrite (Bool.andb_comm (truth_value_of_context s1) (truth_value_of_context s2)).
+    reflexivity.
+  }
+  {
+    exact A.
+  }
+  {
+    reflexivity.
+  }
+Qed.
 
 Theorem boolean_consistency : forall Ctx P, (Ctx ||- P) ->  truth_value_of_context Ctx = true -> truth_value P = true.
 Proof.
   intros Ctx P H T.
   induction H;
   rewrite -> ?truth_value_of_context_cat, -> ?truth_value_of_context_cons, -> ?truth_value_of_context_nil, -> ?Bool.andb_true_r in *.
+  all: simpl in *; auto.  
+  all: rewrite -> ?truth_value_of_context_cat, -> ?truth_value_of_context_cons, -> ?truth_value_of_context_nil, -> ?Bool.andb_true_r in *.
+  all: simpl in *; auto.  
   {
-    congruence.
+    apply truth_value_of_context_perm in a.
+    rewrite -a // in T.
   }
   {
-    give_up.
+    rewrite -> ?Bool.andb_assoc in *.    
+    assert (X : truth_value A = true) by auto.
+    rewrite -> X in *.
+    auto.
   }
   {
-   
+    rewrite T in IHprovable.
+    Search (_ && true).
+    rewrite -> Bool.andb_true_r in *.
+    destruct (truth_value A); auto.
+  }
+Qed.
+
+Inductive extended_nat := negative_infinity | positive_infinity | non_negative (_:nat).
+Coercion non_negative : nat >-> extended_nat.
+Declare Scope extended_nat_scope.
+Delimit Scope extended_nat_scope with extended_nat.
+Bind Scope extended_nat_scope with extended_nat.
+Notation "-oo" := negative_infinity : extended_nat_scope.
+Notation "+oo" := positive_infinity : extended_nat_scope.
+
+Definition extended_plus (A B : extended_nat) : extended_nat
+  := match A, B with 
+     | -oo, -oo => -oo
+     | -oo, non_negative _ => -oo
+     | non_negative _, -oo => -oo
+     | non_negative A, non_negative B => non_negative (A + B)
+     end%extended_nat.
+Infix "+" := extended_plus : extended_nat_scope.
+
+Definition extended_minus (A B : extended_nat) : extended_nat
+  := match A, B with 
+     | -oo, -oo => -oo
+     | -oo, non_negative _ => -oo
+     | non_negative _, -oo => -oo
+     | non_negative A, non_negative B => non_negative (A + B)
+     end%extended_nat.
+Infix "-" := extended_minus : extended_nat_scope.
+
+Fixpoint resource_count (x : syntax) : extended_nat
+  := match x with
+     | One => 0
+     | Zero => -oo
+     | Tensor l r => resource_count l + resource_count r
+     | With l _ =>  resource_count l
+     | Implication l r => resource_count r - resource_count a
+     | Bang r => truth_value r
+     end%extended_nat.
+     
+Definition truth_value_of_context (ctx : seq syntax) : bool
+  := foldr andb true (map truth_value ctx).
+  
+Lemma truth_value_of_context_cons x ctx : truth_value_of_context (x :: ctx) = truth_value x && truth_value_of_context ctx.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma foldr_cat_assoc A (s1 s2 : seq A) (init : A) (op : A -> A -> A)
+  (init_idl : forall x, op init x = x) 
+  (op_assoc : forall a b c, op a (op b c) = op (op a b) c)
+: foldr op init (s1 ++ s2) = op (foldr op init s1) (foldr op init s2).
+Proof.
+  induction s1.
+  {
+    simpl.
+    rewrite init_idl.
+    reflexivity.
+  }
+  {
+    simpl.
+    rewrite IHs1.
+    rewrite op_assoc.
+    reflexivity.
+  }
+Qed.
+
+Search "assoc" andb.
+
+Lemma truth_value_of_context_cat Ctx1 Ctx2
+: truth_value_of_context (Ctx1 ++ Ctx2) = truth_value_of_context Ctx1 && truth_value_of_context Ctx2.
+Proof.
+  unfold truth_value_of_context.
+  Search map cat.
+  rewrite map_cat.
+  Search foldr cat.
+  Search foldr.
+  rewrite foldr_cat_assoc//.
+  apply Bool.andb_assoc.
+Qed.
+
+Lemma truth_value_of_context_nil 
+: truth_value_of_context [::] = true.
+Proof.
+  reflexivity.
+Qed.
+
+Search perm_eq.
+Check catCA_perm_ind.
+
+Lemma truth_value_of_context_perm Ctx1 Ctx2 : perm_eq Ctx1 Ctx2 -> truth_value_of_context Ctx1 = truth_value_of_context Ctx2.
+Proof.
+  Search perm_eq.
+  Check catCA_perm_ind.
+  intros A.
+  pose proof (@catCA_perm_ind _ 
+    (fun Ctx2 => truth_value_of_context Ctx1 = truth_value_of_context Ctx2)) as H.
+  cbv beta in H.
+  apply H with (s1 := Ctx1).
+  {
+    clear.
+    intros s1 s2 s3 A.
+    rewrite A.
+    clear.
+    rewrite !truth_value_of_context_cat.
+    Search (?A && ?B = ?B && ?A).
+    Search (_ && _ = _ && _).
+    rewrite !Bool.andb_assoc.
+    rewrite (Bool.andb_comm (truth_value_of_context s1) (truth_value_of_context s2)).
+    reflexivity.
+  }
+  {
+    exact A.
+  }
+  {
+    reflexivity.
+  }
+Qed.
+
+Theorem boolean_consistency : forall Ctx P, (Ctx ||- P) ->  truth_value_of_context Ctx = true -> truth_value P = true.
+Proof.
+  intros Ctx P H T.
+  induction H;
+  rewrite -> ?truth_value_of_context_cat, -> ?truth_value_of_context_cons, -> ?truth_value_of_context_nil, -> ?Bool.andb_true_r in *.
+  all: simpl in *; auto.  
+  all: rewrite -> ?truth_value_of_context_cat, -> ?truth_value_of_context_cons, -> ?truth_value_of_context_nil, -> ?Bool.andb_true_r in *.
+  all: simpl in *; auto.  
+  {
+    apply truth_value_of_context_perm in a.
+    rewrite -a // in T.
+  }
+  {
+    rewrite -> ?Bool.andb_assoc in *.    
+    assert (X : truth_value A = true) by auto.
+    rewrite -> X in *.
+    auto.
+  }
+  {
+    rewrite T in IHprovable.
+    Search (_ && true).
+    rewrite -> Bool.andb_true_r in *.
+    destruct (truth_value A); auto.
+  }
+Qed.
+
+
