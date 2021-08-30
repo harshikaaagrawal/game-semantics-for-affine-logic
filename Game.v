@@ -15,19 +15,21 @@ Definition other_player (p : player) : player
    end.
 
 Record strict_game
-:= { possible_moves : Type
+:= { possible_move : Type
    ; first_player : player
-   ; plays_won_by_P : Stream possible_moves -> Prop }.
+   ; play_won_by_P : Stream possible_move -> Prop }.
 
 Definition position (g : strict_game) : Type
-:= seq (possible_moves g).
+:= seq (possible_move g).
 
 Search "even" (nat -> bool).
 Definition next_player {g} (p : position g) : player
 := if Nat.even (length p) then first_player g else other_player (first_player g).
 
-Definition strategy {g} (p : player) : Type
-:= forall (pos : position g) (h : next_player pos = p), possible_moves g.
+Definition strategy g (p : player) : Type
+:= forall (pos : position g) (h : next_player pos = p), possible_move g.
 
+Definition player_follows_strategy {g} (p : player) (strat : strategy g p) (history : Stream (possible_move g)) : Prop.
+:=
 
 
