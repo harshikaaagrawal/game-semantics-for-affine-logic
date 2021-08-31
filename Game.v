@@ -13,13 +13,13 @@ Definition other_player (p : player) : player
    | player_O => player_P
    | player_P => player_O
    end.
-
-Record strict_game
+Module strict. 
+Record game
 := { possible_move : Type
    ; first_player : player
    ; play_won_by_P : Stream possible_move -> Prop }.
 
-Definition position (g : strict_game) : Type
+Definition position (g : game) : Type
 := seq (possible_move g).
 
 Search "even" (nat -> bool).
@@ -29,7 +29,22 @@ Definition next_player {g} (p : position g) : player
 Definition strategy g (p : player) : Type
 := forall (pos : position g) (h : next_player pos = p), possible_move g.
 
+End strict.
+
+Module relaxed.
+Record game
+:= { possible_move : Type
+   ; first_player : player
+   ; play_won_by_P : Stream possible_move -> Prop
+   ; next_player : seq possible_move -> player 
+   ; next_move_is_valid : seq possible_move -> possible_move -> Prop}.
+
+Definition to_strict (g : game) : strict.game.
+refine {|strict.possible_move := seq (possible_move g)
+   ; strict.first_player := first_player g|}.
+
 Definition player_follows_strategy {g} (p : player) (strat : strategy g p) (history : Stream (possible_move g)) : Prop.
 :=
+
 
 
