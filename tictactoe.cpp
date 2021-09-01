@@ -1,25 +1,7 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-char board[3][3];
-int current_player = 1;
-
-void display_current_board()
-{
-	cout<<"\n";
-	
-	for(int i = 0; i < 3; i++)
-	{
-	    for(int j = 0; j < 3; j++)
-	    {
-	        cout<<board[i][j]<<" ";
-	    }
-	    cout<<"\n";
-	}
-	return;
-}
-
-bool row()
+bool row(char board[3][3])
 {
 	for (int i = 0; i < 3; i++) {
 		if (board[i][0] == board[i][1] && board[i][1] == board[i][2] && board[i][0] != ' ')
@@ -28,7 +10,7 @@ bool row()
 	return (false);
 }
 
-bool column()
+bool column(char board[3][3])
 {
 	for (int i = 0; i < 3; i++) {
 		if (board[0][i] == board[1][i] && board[1][i] == board[2][i] && board[0][i] != ' ')
@@ -37,7 +19,7 @@ bool column()
 	return (false);
 }
 
-bool diagonal()
+bool diagonal(char board[3][3])
 {
 	if (board[0][0] == board[1][1] && board[1][1] == board[2][2] && board[0][0] != ' ')
 		return (true);
@@ -53,6 +35,8 @@ int main()
     cout<<"TicTacToe, User vs User \n";
 	cout<<"Choose a cell between 1 to 9 as shown below to play \n";
 	
+	char board[3][3];
+	int current_player = 1;
 	for(int i = 0; i < 3; i++)
 	{
 	    cout<<"------------\n";
@@ -66,7 +50,7 @@ int main()
     cout<<"\n";
 	int moves_played = 0, x, y, r, c;
 
-	while (row() || column() || diagonal() == false && moves_played != 9)
+	while ((row(board) || column(board) || diagonal(board)) != true && moves_played != 9)
 	{
 		if (current_player == 1)
 		{
@@ -119,11 +103,20 @@ int main()
 			current_player = 1;
 		}
 		
-		display_current_board();
+		cout<<"\n";
+	
+	    for(int i = 0; i < 3; i++)
+	    {
+	        for(int j = 0; j < 3; j++)
+	        {
+	            cout<<board[i][j]<<" ";
+	        }
+	        cout<<"\n";
+	    }
 		moves_played++;
 	}
 
-	if(row()|| column() || diagonal() == false && moves_played == 9)
+	if((row(board)|| column(board) || diagonal(board)) != true && moves_played == 9)
 		cout<<"It's a draw\n";
 	else
 	{
@@ -138,4 +131,3 @@ int main()
 	}
 	return 0;
 }
-
