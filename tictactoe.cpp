@@ -59,67 +59,52 @@ int game_result(int current_player, char board[3][3], int moves_played)
 	}
 }
 
+bool make_move(char board[3][3], int current_player, int r, int c)
+{
+    if (r <= 3 && c <= 3)
+			{
+				if (isblank(board[r-1][c-1]))
+				{
+				    board[r-1][c-1] = (current_player == 1) ? 'X' : 'O';
+				    
+				    return true; 
+				}
+				else 
+				{
+					cout<<"Invalid request, cannot fill already filled position\n";
+					return false;
+				}
+			}
+	else
+	{
+	    cout<<"\nInput is invalid please enter correct input\n";
+	    return false;
+	}
+}
+
+int input_and_make_move(int current_player, char board[3][3])
+{
+     cout<<"Player "<< current_player<<", enter the respective row and column to insert "<<((current_player == 1) ? 'X' : 'O')<<"\n";
+    int r, c;
+    cin>>r>>c;
+    while(!make_move(board, current_player, r, c))
+    {
+        cin>>r>>c;
+    }
+    
+    return (current_player == 1) ? 2 : 1;
+}
+
 int main_game(char board[3][3])
 {
-    int moves_played = 0, x, y, r, c;
+    int moves_played = 0;
     cout<<"Which player going first, input 1 or 2 \n";
     int current_player;
     cin>>current_player;
     while ((row(board) || column(board) || diagonal(board)) != true && moves_played != 9)
 	{
-		if (current_player == 1)
-		{
-		    player1: 
-		    cout<<"Player 1, enter the respective row and column to insert X\n";
-			cin>>r>>c;
-			if (r <= 3 && c <= 3)
-			{
-				if (isblank(board[r-1][c-1]))
-				{
-					board[r-1][c-1] = 'X';
-				}
-				else 
-				{
-					cout<<"Invalid request, cannot fill already filled position\n";
-					goto player1;
-				}
-			}
-
-			else
-			{
-				cout<<"\nInput is invalid please enter correct input\n";
-				goto player1;
-			}
-			current_player = 2;
-		}
-
-		else if(current_player == 2)
-		{
-		    player2:
-		    cout<<"Player 2, Enter the respective row and column to insert O\n";
-			cin>>r>>c;
-			if (r <= 3 && c <= 3) 
-			{
-				if (isblank(board[r-1][c-1]))
-				{
-					board[r-1][c-1] = 'O';
-				}
-				else
-				{
-					cout<<"Invalid request, cannot fill already filled position\n";
-					goto player2;
-				}
-			}
-			else
-			{
-				cout<<"\nInput is not valid please enter correct input\n";
-				goto player2;
-			}
-			current_player = 1;
-		}
-		
-		cout<<"\n";
-	
+	    current_player = input_and_make_move(current_player, board);
+	    cout<<"\n";
 	    output_board(board);
 		moves_played++;
 	}
@@ -131,24 +116,35 @@ void game_intro()
 {
     cout<<"TicTacToe, User vs User \n";
 	cout<<"Choose a cell between 1 to 9 as shown below to play \n";
-	char board[3][3];
     for(int i = 0; i < 3; i++)
 	{
 	    cout<<"------------\n";
 		for(int j = 0; j < 3; j++)
 		{
 		    cout<<(i*3)+j+1<<" | ";
-			board[i][j] = ' ';
 		}
 		cout<<"\n";
 	}
     cout<<"\n";
-    
-    main_game(board);
+}
+
+void initialise_board(char board[3][3])
+{
+	for(int i = 0; i < 3; i++)
+	{
+	    for(int j = 0; j < 3; j++)
+	    {
+	        board[i][j] = ' ';
+	    }
+	    
+	}
 }
 
 int main()
 {
 	game_intro();
+	char board[3][3];
+	initialise_board(board);
+	main_game(board);
 	return 0;
 }
