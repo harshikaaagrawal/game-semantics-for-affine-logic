@@ -30,27 +30,42 @@ bool diagonal(char board[3][3])
 	return (false);
 }
 
-int main()
+int output_board(char board[3][3])
 {
-    cout<<"TicTacToe, User vs User \n";
-	cout<<"Choose a cell between 1 to 9 as shown below to play \n";
-	
-	char board[3][3];
-	int current_player = 1;
-	for(int i = 0; i < 3; i++)
-	{
-	    cout<<"------------\n";
-		for(int j = 0; j < 3; j++)
-		{
-		    cout<<(i*3)+j+1<<" | ";
-			board[i][j] = ' ';
-		}
-		cout<<"\n";
-	}
-    cout<<"\n";
-	int moves_played = 0, x, y, r, c;
+    for(int i = 0; i < 3; i++)
+	 {
+       for(int j = 0; j < 3; j++)
+	   {
+             cout<<board[i][j]<<" ";
+	   }
+	   cout<<"\n";
+	 }
+}
 
-	while ((row(board) || column(board) || diagonal(board)) != true && moves_played != 9)
+int game_result(int current_player, char board[3][3], int moves_played)
+{
+    if((row(board)|| column(board) || diagonal(board)) != true && moves_played == 9)
+		cout<<"It's a draw\n";
+	else
+	{
+		if (current_player == 1)
+		{
+			cout<<"Player 2 has won\n";
+		}
+		else if (current_player == 2)
+		{
+			cout<<"Player 1 has won\n";
+		}
+	}
+}
+
+int main_game(char board[3][3])
+{
+    int moves_played = 0, x, y, r, c;
+    cout<<"Which player going first, input 1 or 2 \n";
+    int current_player;
+    cin>>current_player;
+    while ((row(board) || column(board) || diagonal(board)) != true && moves_played != 9)
 	{
 		if (current_player == 1)
 		{
@@ -105,29 +120,35 @@ int main()
 		
 		cout<<"\n";
 	
-	    for(int i = 0; i < 3; i++)
-	    {
-	        for(int j = 0; j < 3; j++)
-	        {
-	            cout<<board[i][j]<<" ";
-	        }
-	        cout<<"\n";
-	    }
+	    output_board(board);
 		moves_played++;
 	}
+	
+	game_result(current_player, board, moves_played);
+}
 
-	if((row(board)|| column(board) || diagonal(board)) != true && moves_played == 9)
-		cout<<"It's a draw\n";
-	else
+void game_intro()
+{
+    cout<<"TicTacToe, User vs User \n";
+	cout<<"Choose a cell between 1 to 9 as shown below to play \n";
+	char board[3][3];
+    for(int i = 0; i < 3; i++)
 	{
-		if (current_player == 1)
+	    cout<<"------------\n";
+		for(int j = 0; j < 3; j++)
 		{
-			cout<<"Player 2 has won\n";
+		    cout<<(i*3)+j+1<<" | ";
+			board[i][j] = ' ';
 		}
-		else if (current_player == 2)
-		{
-			cout<<"Player 1 has won\n";
-		}
+		cout<<"\n";
 	}
+    cout<<"\n";
+    
+    main_game(board);
+}
+
+int main()
+{
+	game_intro();
 	return 0;
 }
