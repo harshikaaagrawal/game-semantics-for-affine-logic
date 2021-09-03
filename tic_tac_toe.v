@@ -7,4 +7,7 @@ From mathcomp.ssreflect Require Import seq eqtype.
 Set Boolean Equality Schemes.
 Set Decidable Equality Schemes.
 
-Inductive player := player_1 | player_1 | empty.
+Inductive player := player_1 | player_2 | empty.
+Axiom later : forall {T}, T.
+Definition row (board : seq (seq player)) : bool := later.
+
