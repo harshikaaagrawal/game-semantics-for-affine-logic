@@ -68,11 +68,20 @@ match current_player with
 |player_1 => player_2
 |player_2 => player_1
 end.
-Definition intitial_board : board := later.
-Definition output_board (b : board) : string := later.
-Definition game_result (current_player : player) (b : board) : option player := 
+Compute nseq 3 empty.
+Definition initial_board : board :=
+nseq 3 (nseq 3 empty).
+Locate "++". 
+Definition output_row (s: seq cell) : string :=
+foldr String.append ""%string (map cell_to_string s) ++ new_line.
+Definition output_board (b : board) : string := 
+foldr String.append ""%string (map output_row b).
+Compute output_board initial_board.
+Definition game_result (state : board * player) : option player := 
+let (b, current_player) := state in
 if any_row b || any_column b || any_diagonal b then Some (other_player current_player) else None.
-
+Definition initial_state : board * player :=
+(initial_board, player_1).
 Definition game_result_string (p : option player) : string := later.
 Definition game_intro : string := later.
 Definition main_game (b : board) : unit := later.
@@ -82,4 +91,15 @@ if (r <=? 3) && (c <=? 3) then (if get_cell b r c == empty then
  (set_cell b r c current_player, true) else (b, false))
  else (b, false).
 
+Fixpoint make_moves (moves : seq (nat*nat)) (state : board*player) : board*player :=
+match moves with
+|[::] => state
+|(r, c) :: moves => let new_state := (fst (make_move (fst state) (snd state) r c), other_player (snd state)) in
+make_moves moves new_state
+end.
+
+Compute output_board (fst (make_move initial_board player_1 1 2) ).
+Compute output_board (fst (make_move (fst (make_move initial_board player_1 1 2)) player_2 1 1) ).
+Compute output_board (fst (make_moves [:: (1, 1) ; (2, 2) ; (1, 0) ; (0,0) ; (1, 2)] initial_state)).
+Compute game_result (make_moves [:: (1, 1) ; (2, 2) ; (1, 0) ; (0,0) ; (1, 2)] initial_state).
 Search (seq _-> seq _-> bool).
