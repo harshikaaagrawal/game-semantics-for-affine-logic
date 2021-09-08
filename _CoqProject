@@ -1,0 +1,5 @@
+-R . CoqProject
+tic_tac_toe.v
+Logic.v 
+Game.v
+Linear_Logic.v

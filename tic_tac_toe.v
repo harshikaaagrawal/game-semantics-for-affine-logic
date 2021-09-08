@@ -3,9 +3,8 @@ Require Import Coq.btauto.Btauto.
 Require Import Coq.Lists.Streams.
 Require Import Coq.Strings.String.
 Require Import Coq.Strings.Ascii.
-Require Import Coq.Arith.Arith.
 From Coq.ssr Require Import ssreflect ssrfun ssrbool.
-From mathcomp.ssreflect Require Import seq eqtype.
+From mathcomp.ssreflect Require Import seq eqtype ssrnat.
 
 Set Implicit Arguments.
 Set Boolean Equality Schemes.
@@ -87,7 +86,7 @@ Definition game_intro : string := later.
 Definition main_game (b : board) : unit := later.
 Definition input_and_make_move (current_player : player) (b : board): player * board := later.
 Definition make_move (b: board) (current_player : player) (r : nat) (c : nat) : board * bool := 
-if (r <=? 3) && (c <=? 3) then (if get_cell b r c == empty then
+if (r <= 3) && (c <= 3) then (if get_cell b r c == empty then
  (set_cell b r c current_player, true) else (b, false))
  else (b, false).
 
