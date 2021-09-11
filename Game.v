@@ -88,11 +88,10 @@ Definition game_result_string (p : option player) : string := later.
 Definition game_intro : string := later.
 Definition main_game (b : board) : unit := later.
 Definition input_and_make_move (current_player : player) (b : board): player * board := later.
+Definition move_is_valid (b: board) (r : nat) (c : nat) : bool := 
+(r <= 3) && (c <= 3) && (get_cell b r c == empty).
 Definition make_move (b: board) (current_player : player) (r : nat) (c : nat) : board * bool := 
-if (r <= 3) && (c <= 3) then (if get_cell b r c == empty then
- (set_cell b r c current_player, true) else (b, false))
- else (b, false).
-
+if move_is_valid b r c then(set_cell b r c current_player, true) else (b, false).
 Fixpoint make_moves (moves : seq (nat*nat)) (state : board*player) : board*player :=
 match moves with
 |[::] => state
@@ -100,12 +99,29 @@ match moves with
 make_moves moves new_state
 end.
 
+
+Definition next_move_is_valid (moves_so_far : seq (nat * nat)) (next_move : nat * nat) : bool :=
+let (r, c) := next_move in 
+let (b, _) := make_moves moves_so_far initial_state in 
+move_is_valid b r c.
+
+Fixpoint first_invalid_player (moves : seq (nat*nat)) (state : board*player) : option player :=
+match moves with
+|[::] => None
+|
+|(r, c) :: moves => let new_state := (fst (make_move (fst state) (snd state) r c), other_player (snd state)) in
+make_moves moves new_state
+end.
+
+
 Compute output_board (fst (make_move initial_board player_1 1 2) ).
 Compute output_board (fst (make_move (fst (make_move initial_board player_1 1 2)) player_2 1 1) ).
 Compute output_board (fst (make_moves [:: (1, 1) ; (2, 2) ; (1, 0) ; (0,0) ; (1, 2)] initial_state)).
 Compute game_result (make_moves [:: (1, 1) ; (2, 2) ; (1, 0) ; (0,0) ; (1, 2)] initial_state).
 Search (seq _-> seq _-> bool).
 End tic_tac_toe.
+
+
 Inductive player := player_O | player_P.
 Definition other_player (p : player) : player
 := match p with
@@ -150,7 +166,8 @@ Definition tic_tac_toe_game : relaxed.game.
 refine {| relaxed.possible_move := nat * nat
         ; relaxed.first_player := player_P
         ; relaxed.next_player moves_so_far := if Nat.even (List.length moves_so_far) then player_P else player_O
-        ;
+
+        ; relaxed.next_move_is_valid moves_so_fa := 
         |}.
 
 
