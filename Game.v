@@ -38,11 +38,12 @@ Notation internal_cell_dec_lb := (@internal_option_dec_lb _ _ (@internal_player_
 (*Lemma cell_eqbP : Equality.axiom cell_beq.
 Proof. intros x y. pose proof (@internal_cell_dec_bl x y); pose proof (@internal_cell_dec_lb x y). 
   destruct cell_beq ; constructor ; intuition congruence. Qed.*)
-
+Module Export structures.
 Canonical player_eqMixin := EqMixin player_eqbP.
 Canonical player_eqType := Eval hnf in EqType player player_eqMixin.
 (*Canonical cell_eqMixin := EqMixin cell_eqbP.
 Canonical cell_eqType := Eval hnf in EqType cell cell_eqMixin.*)
+End structures.
 Definition empty : cell := None.
 Coercion some_player (p : player) : cell := Some p.
 Definition set_cell (b : board) (r : nat) (c : nat) (p : player) : board :=
@@ -92,10 +93,15 @@ Definition move_is_valid (b: board) (r : nat) (c : nat) : bool :=
 (r <= 3) && (c <= 3) && (get_cell b r c == empty).
 Definition make_move (b: board) (current_player : player) (r : nat) (c : nat) : board * bool := 
 if move_is_valid b r c then(set_cell b r c current_player, true) else (b, false).
+Definition make_single_move (state : board*player) (next_move : nat*nat) : (board*player)*bool :=
+let (r, c) := next_move in
+let (b, p) := state in 
+let (new_board, is_valid) := make_move b p r c in 
+((new_board, other_player p), is_valid).
 Fixpoint make_moves (moves : seq (nat*nat)) (state : board*player) : board*player :=
 match moves with
 |[::] => state
-|(r, c) :: moves => let new_state := (fst (make_move (fst state) (snd state) r c), other_player (snd state)) in
+|move :: moves => let new_state := fst (make_single_move state move) in
 make_moves moves new_state
 end.
 
@@ -105,14 +111,19 @@ let (r, c) := next_move in
 let (b, _) := make_moves moves_so_far initial_state in 
 move_is_valid b r c.
 
-Fixpoint first_invalid_player (moves : seq (nat*nat)) (state : board*player) : option player :=
-match moves with
-|[::] => None
-|
-|(r, c) :: moves => let new_state := (fst (make_move (fst state) (snd state) r c), other_player (snd state)) in
-make_moves moves new_state
+Fixpoint game_outcome (moves : seq (nat * nat)) (state : board*player) : option player :=
+(*None means game is still in progress, some player means game is over and that player won*)
+match moves with 
+| [::] => None 
+| move :: moves => let (new_state, is_valid) := make_single_move state move in 
+if is_valid 
+  then match game_result new_state with 
+       | None => game_outcome moves new_state
+       | Some winner => Some winner
+       end
+  else
+    Some (other_player (snd state)) 
 end.
-
 
 Compute output_board (fst (make_move initial_board player_1 1 2) ).
 Compute output_board (fst (make_move (fst (make_move initial_board player_1 1 2)) player_2 1 1) ).
@@ -120,6 +131,7 @@ Compute output_board (fst (make_moves [:: (1, 1) ; (2, 2) ; (1, 0) ; (0,0) ; (1,
 Compute game_result (make_moves [:: (1, 1) ; (2, 2) ; (1, 0) ; (0,0) ; (1, 2)] initial_state).
 Search (seq _-> seq _-> bool).
 End tic_tac_toe.
+Export tic_tac_toe.structures.
 
 
 Inductive player := player_O | player_P.
@@ -128,6 +140,15 @@ Definition other_player (p : player) : player
    | player_O => player_P
    | player_P => player_O
    end.
+
+Module Streams.
+Fixpoint firstn {A : Type} (s : Stream A) (n : nat) : seq A :=
+match n with
+| 0 => [::]
+| S m => Streams.hd s :: firstn (Streams.tl s) m
+end.
+End Streams.
+
 Module strict. 
 Record game
 := { possible_move : Type
@@ -166,8 +187,12 @@ Definition tic_tac_toe_game : relaxed.game.
 refine {| relaxed.possible_move := nat * nat
         ; relaxed.first_player := player_P
         ; relaxed.next_player moves_so_far := if Nat.even (List.length moves_so_far) then player_P else player_O
-
-        ; relaxed.next_move_is_valid moves_so_fa := 
+        ; relaxed.play_won_by_P all_moves := exists n : nat, tic_tac_toe.game_outcome (Streams.firstn all_moves n) tic_tac_toe.initial_state == Some tic_tac_toe.player_1
+        ; relaxed.next_move_is_valid := tic_tac_toe.next_move_is_valid
         |}.
+
+Defined.
+End tic_tac_toe_relaxed.
+
 
 
