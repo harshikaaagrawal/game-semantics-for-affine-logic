@@ -133,8 +133,14 @@ Search (seq _-> seq _-> bool).
 End tic_tac_toe.
 Export tic_tac_toe.structures.
 
-
 Inductive player := player_O | player_P.
+Lemma player_eqbP : Equality.axiom player_beq.
+Proof. intros x y. pose proof (@internal_player_dec_bl x y); pose proof (@internal_player_dec_lb x y). 
+  destruct player_beq ; constructor ; intuition congruence. Qed.
+Module Export structures.
+Canonical player_eqMixin := EqMixin player_eqbP.
+Canonical player_eqType := Eval hnf in EqType player player_eqMixin.
+End structures.
 Definition other_player (p : player) : player
 := match p with
    | player_O => player_P
@@ -173,13 +179,26 @@ Record game
    ; first_player : player
    ; play_won_by_P : Stream possible_move -> Prop
    ; next_player : seq possible_move -> player 
-   ; next_move_is_valid : seq possible_move -> possible_move -> Prop}.
+   ; next_move_is_valid : seq possible_move -> possible_move -> bool}.
 
-(*Definition to_strict (g : game) : strict.game.
+Definition out_of_turn_move {g} (moves : seq (possible_move g)) (actual_current_player : player) : bool  :=  
+actual_current_player != next_player g moves.
+Definition first_invalid_move {g : game} (moves : seq (seq (possible_move g))) : option player :=
+(* for(int i = 0; i <= ; i++)
+   {
+      for(int j = 0; j <= ; j++)
+      {
+          if(out_of_turn(moves[0 to i-1], i%2 ) || !next_move_is_valid(moves[0 to i], moves[i][j])
+              return i%2
+
+ *)
+Definition to_strict (g : game) : strict.game.
 refine {| strict.possible_move := seq (possible_move g)
-   ; strict.first_player := first_player g|}.
+   ; strict.first_player := first_player g
+   
+|}.
 
-Definition player_follows_strategy {g} (p : player) (strat : strategy g p) (history : Stream (possible_move g)) : Prop. *)
+Definition player_follows_strategy {g} (p : player) (strat : strategy g p) (history : Stream (possible_move g)) : Prop. 
 End relaxed.
 
 Module tic_tac_toe_relaxed.
@@ -193,6 +212,7 @@ refine {| relaxed.possible_move := nat * nat
 
 Defined.
 End tic_tac_toe_relaxed.
+
 
 
 
