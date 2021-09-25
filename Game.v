@@ -3,7 +3,9 @@ Require Import Coq.btauto.Btauto.
 Require Import Coq.Lists.Streams.
 Require Import Coq.Strings.String.
 Require Import Coq.Strings.Ascii.
-(*Require Import CoqProject.tic_tac_toe.*)
+Require Import Coq.Classes.Morphisms.
+Require Import Coq.Setoids.Setoid.
+(*Require Import CoqProjec t.tic_tac_toe.*)
 From Coq.ssr Require Import ssreflect ssrfun ssrbool.
 From mathcomp.ssreflect Require Import seq eqtype.
 From Coq.ssr Require Import ssreflect ssrfun ssrbool.
@@ -145,7 +147,16 @@ next_move_is_valid moves_so_far next_move || (game_outcome moves_so_far initial_
 End tic_tac_toe.
 Export tic_tac_toe.structures.
 
+Section Logic.
+Lemma forall_iff_compat {T} {P Q : T -> Prop}
+: (forall x, P x <-> Q x) -> ((forall x, P x) <-> (forall y, Q y)).
+Proof. firstorder. Qed.
+End Logic.
+
 Inductive player := player_O | player_P.
+Declare Scope player_scope.
+Delimit Scope player_scope with player.
+Bind Scope player_scope with player.
 Lemma player_eqbP : Equality.axiom player_beq.
 Proof. intros x y. pose proof (@internal_player_dec_bl x y); pose proof (@internal_player_dec_lb x y). 
   destruct player_beq ; constructor ; intuition congruence. Qed.
@@ -159,6 +170,8 @@ Definition other_player (p : player) : player
    | player_P => player_O
    end.
 
+Notation "~ p" := (other_player p) : player_scope.
+
 Module Streams.
 Fixpoint firstn {A : Type} (s : Stream A) (n : nat) : seq A :=
 match n with
@@ -166,6 +179,15 @@ match n with
 | S m => Streams.hd s :: firstn (Streams.tl s) m
 end.
 
+
+Fixpoint nth {A : Type} (s : Stream A) (n : nat) : A := 
+match n with
+| 0 => Streams.hd s
+| S m => nth (Streams.tl s) m
+end.
+CoFixpoint count_up_from (n : nat) : Stream nat := Streams.Cons n (count_up_from (n.+1)).
+Compute nth (count_up_from 3) 5.
+Compute firstn (count_up_from 3) 20.
 (** We need to flip the arguments to appease Coq's guard checker :-/ *)
 Section prepend_helper.
   Context {A : Type} (s : Stream A).
@@ -181,22 +203,137 @@ CoFixpoint flatten {A} (s : Stream (A * list A)) : Stream A
   := let (x, xs) := Streams.hd s in Streams.Cons x (prepend xs (flatten (Streams.tl s))).
 End Streams.
 
+Declare Scope game_scope.
+Delimit Scope game_scope with game.
+Declare Scope strategy_scope.
+Delimit Scope strategy_scope with game.
 Module strict. 
 Record game
 := { possible_move : Type
    ; first_player : player
    ; play_won_by_P : Stream possible_move -> Prop }.
+   
+Bind Scope game_scope with game.
 
 Definition position (g : game) : Type
 := seq (possible_move g).
+
+Definition play (g : game) : Type
+:= Stream (possible_move g).
 
 (*Search "even" (nat -> bool).*)
 Definition next_player {g} (p : position g) : player
 := if Nat.even (List.length p) then first_player g else other_player (first_player g).
 
 Definition strategy g (p : player) : Type
-:= forall (pos : position g) (h : next_player pos = p), possible_move g.
+:= forall (pos : position g) (*(h : next_player pos == p)*), possible_move g.
 
+Bind Scope strategy_scope with strategy.
+
+Definition player_follows_strategy {g} (p : player) (s : strategy g p) (all_moves : play g) : Prop := 
+forall n : nat, let initial_segment := Streams.firstn all_moves n in 
+forall h : next_player initial_segment == p, 
+Streams.nth all_moves (n.+1) = s initial_segment.
+
+(* make [p] not implicit *)
+Global Arguments player_follows_strategy {g} p s all_moves.
+
+Definition play_won_by {g} (p : player) (all_moves : play g) : Prop :=
+match p with
+| player_P => play_won_by_P g all_moves
+| player_O => ~play_won_by_P g all_moves
+end.
+
+Definition winning_strategy {g} {p : player} (s : strategy g p) : Prop :=
+forall all_moves : play g, player_follows_strategy p s all_moves -> play_won_by p all_moves. 
+
+Definition determined (g : game) : Type := { s : strategy g player_P | winning_strategy s } + { s : strategy g player_O | winning_strategy s }.
+(* If any winning strategy for P can be transformed into a winning strategy for O and also vice versa, then the game is not determined*) 
+
+Definition negation (g : game) : game :=
+{| possible_move := possible_move g
+   ; first_player := other_player (first_player g)
+   ; play_won_by_P all_moves := ~play_won_by_P g all_moves |}.
+ 
+Notation "~ g" := (negation g) : game_scope.
+
+Definition negation_strategy {g} {p} (s : strategy g p) : strategy (~g) (~p) := s.
+
+Notation "~ s" := (negation_strategy s) : strategy_scope.
+
+Lemma negation_player_follows_strategy {g} {p} {s : strategy g p} {all_moves : play g} 
+: player_follows_strategy p s all_moves <-> player_follows_strategy (~p) (~s) all_moves.
+Proof.
+  unfold player_follows_strategy.
+  apply forall_iff_compat.
+  intro n.
+  apply imp_iff_compat_r.
+  unfold next_player.
+  simpl.
+  generalize (Nat.even (Datatypes.length (Streams.firstn all_moves n))); intro fp_move.
+  generalize (first_player g); intro fp.
+  Local Open Scope player_scope.
+  destruct fp_move, fp, p.
+  all: simpl.
+  all: done.
+Qed.
+Lemma negation_play_won_by {g} {p} {all_moves : play g}
+ : play_won_by p all_moves -> play_won_by (g:=~g) (~ p) all_moves.
+Proof.
+  intro w.
+  unfold play_won_by in *.
+  simpl.
+  destruct p.
+  { simpl.
+    refine w.
+  }
+  { simpl.
+    intuition.
+  }
+Qed.
+Lemma negation_play_won_by_O_iff {g} (p:=player_O) {all_moves : play g}
+ : play_won_by p all_moves <-> play_won_by (g:=~g) (~ p) all_moves.
+Proof.
+  split; [ apply negation_play_won_by | ].
+  simpl; trivial.
+Qed.
+Lemma negation_play_won_by_iff_classic {g} {p} {all_moves : play g}
+   (classic : p = player_P -> ~(~play_won_by_P g all_moves) -> play_won_by_P g all_moves)
+ : play_won_by p all_moves <-> play_won_by (g:=~g) (~ p) all_moves.
+Proof.
+  destruct p; try apply negation_play_won_by_O_iff.
+  split; [ apply negation_play_won_by | ].
+  simpl; now apply classic.
+Qed.
+Lemma negation_winning_strategy {g} {p} {s : strategy g p} : winning_strategy s -> winning_strategy (~s).
+Proof.
+  unfold winning_strategy.
+  intros w all_moves not_p_not_s.
+  rewrite <- negation_player_follows_strategy in not_p_not_s.
+  specialize (w all_moves not_p_not_s).
+  apply negation_play_won_by, w.
+Qed.  
+Lemma negation_winning_strategy_O_iff {g} (p:=player_O) {s : strategy g p}
+ : winning_strategy s <-> winning_strategy (~s).
+Proof.
+  unfold winning_strategy.
+  apply forall_iff_compat; intro w.
+  rewrite <- negation_player_follows_strategy.
+  apply imp_iff_compat_l.
+  apply negation_play_won_by_O_iff.
+Qed.  
+Lemma negation_winning_strategy_iff_classic {g} {p} {s : strategy g p}
+   (classic : forall all_moves, p = player_P -> ~(~play_won_by_P g all_moves) -> play_won_by_P g all_moves)
+ : winning_strategy s <-> winning_strategy (~s).
+Proof.
+  unfold winning_strategy.
+  apply forall_iff_compat; intro w.
+  rewrite <- negation_player_follows_strategy.
+  apply imp_iff_compat_l.
+  apply negation_play_won_by_iff_classic.
+  apply classic.
+Qed.  
+  
 End strict.
 
 Module relaxed.

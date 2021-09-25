@@ -20,17 +20,13 @@ match current_player with
 |player_2 => player_1
 end.
 
-Definition pile := seq.
-Definition set_cell (q : pile) (m : nat) (n : nat) (p : player) : pile :=
-set_nth [::] q m n.
-
-Definition make_move (q : pile) (current_player : player) (m : nat) (n : nat) : pile * bool := 
-if (n <= nth x0 q m) then set_cell q m n current_player.
-
+(*Definition pile := seq.*)
+Definition set_cell_in_pile (q : seq nat) (index : nat) (n : nat) (p : player) : seq nat :=
+(set_nth 0 q index n).
+Print set_nth.
 Definition game_result (current_player : player) : player :=
 other_player current_player.
-
-
-
+Definition make_move (q : seq nat) (current_player : player) (index : nat) (n : nat) : seq nat + player := 
+if (n <= nth 0 q index) && (n != 0) then inl (set_cell_in_pile q index (nth 0 q index - n) current_player) else inr (game_result current_player).
 
 
