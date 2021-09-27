@@ -1,13 +1,13 @@
 Require Import Coq.Program.Equality.
+Require Import Coq.micromega.Lia.
 Require Import Coq.btauto.Btauto.
 Require Import Coq.Lists.Streams.
 Require Import Coq.Strings.String.
 Require Import Coq.Strings.Ascii.
 Require Import Coq.Classes.Morphisms.
 Require Import Coq.Setoids.Setoid.
-(*Require Import CoqProjec t.tic_tac_toe.*)
-From Coq.ssr Require Import ssreflect ssrfun ssrbool.
-From mathcomp.ssreflect Require Import seq eqtype.
+Require Import Coq.Arith.Arith.
+(*Require Import CoqProject.tic_tac_toe.*)
 From Coq.ssr Require Import ssreflect ssrfun ssrbool.
 From mathcomp.ssreflect Require Import seq eqtype ssrnat.
 
@@ -211,7 +211,14 @@ Module strict.
 Record game
 := { possible_move : Type
    ; first_player : player
-   ; play_won_by_P : Stream possible_move -> Prop }.
+   ; play_won_by_P : Stream possible_move -> Prop
+   ; play_won_by_O : Stream possible_move -> Prop
+   ; no_duplicate_winner : forall all_moves, play_won_by_P all_moves -> play_won_by_O all_moves -> False
+   (* same as
+      forall all_moves, play_won_by_P all_moves -> (play_won_by_O all_moves -> False)
+      roughly the same as
+      forall all_moves, (play_won_by_P all_moves /\ play_won_by_O all_moves) -> False *)
+    }.
    
 Bind Scope game_scope with game.
 
@@ -241,7 +248,7 @@ Global Arguments player_follows_strategy {g} p s all_moves.
 Definition play_won_by {g} (p : player) (all_moves : play g) : Prop :=
 match p with
 | player_P => play_won_by_P g all_moves
-| player_O => ~play_won_by_P g all_moves
+| player_O => play_won_by_O g all_moves
 end.
 
 Definition winning_strategy {g} {p : player} (s : strategy g p) : Prop :=
@@ -250,11 +257,16 @@ forall all_moves : play g, player_follows_strategy p s all_moves -> play_won_by 
 Definition determined (g : game) : Type := { s : strategy g player_P | winning_strategy s } + { s : strategy g player_O | winning_strategy s }.
 (* If any winning strategy for P can be transformed into a winning strategy for O and also vice versa, then the game is not determined*) 
 
-Definition negation (g : game) : game :=
-{| possible_move := possible_move g
-   ; first_player := other_player (first_player g)
-   ; play_won_by_P all_moves := ~play_won_by_P g all_moves |}.
- 
+Definition negation (g : game) : game.
+refine {| possible_move := possible_move g
+        ; first_player := other_player (first_player g)
+        ; play_won_by_P all_moves := play_won_by_O g all_moves 
+        ; play_won_by_O all_moves := play_won_by_P g all_moves
+        ; no_duplicate_winner all_moves P_winner O_winner := _ |}.
+simpl in *.
+pose (no_duplicate_winner g).
+ exact later. (* TODO: homework or next time *)
+Defined.
 Notation "~ g" := (negation g) : game_scope.
 
 Definition negation_strategy {g} {p} (s : strategy g p) : strategy (~g) (~p) := s.
@@ -278,61 +290,37 @@ Proof.
   all: done.
 Qed.
 Lemma negation_play_won_by {g} {p} {all_moves : play g}
- : play_won_by p all_moves -> play_won_by (g:=~g) (~ p) all_moves.
+ : play_won_by p all_moves <-> play_won_by (g:=~g) (~ p) all_moves.
 Proof.
-  intro w.
   unfold play_won_by in *.
   simpl.
   destruct p.
   { simpl.
-    refine w.
+    reflexivity.
   }
   { simpl.
-    intuition.
+    reflexivity.
   }
 Qed.
-Lemma negation_play_won_by_O_iff {g} (p:=player_O) {all_moves : play g}
- : play_won_by p all_moves <-> play_won_by (g:=~g) (~ p) all_moves.
-Proof.
-  split; [ apply negation_play_won_by | ].
-  simpl; trivial.
-Qed.
-Lemma negation_play_won_by_iff_classic {g} {p} {all_moves : play g}
-   (classic : p = player_P -> ~(~play_won_by_P g all_moves) -> play_won_by_P g all_moves)
- : play_won_by p all_moves <-> play_won_by (g:=~g) (~ p) all_moves.
-Proof.
-  destruct p; try apply negation_play_won_by_O_iff.
-  split; [ apply negation_play_won_by | ].
-  simpl; now apply classic.
-Qed.
-Lemma negation_winning_strategy {g} {p} {s : strategy g p} : winning_strategy s -> winning_strategy (~s).
+Lemma negation_winning_strategy {g} {p} {s : strategy g p} : winning_strategy s <-> winning_strategy (~s).
 Proof.
   unfold winning_strategy.
-  intros w all_moves not_p_not_s.
-  rewrite <- negation_player_follows_strategy in not_p_not_s.
-  specialize (w all_moves not_p_not_s).
-  apply negation_play_won_by, w.
-Qed.  
-Lemma negation_winning_strategy_O_iff {g} (p:=player_O) {s : strategy g p}
- : winning_strategy s <-> winning_strategy (~s).
-Proof.
   unfold winning_strategy.
   apply forall_iff_compat; intro w.
   rewrite <- negation_player_follows_strategy.
   apply imp_iff_compat_l.
-  apply negation_play_won_by_O_iff.
+  apply negation_play_won_by.
 Qed.  
-Lemma negation_winning_strategy_iff_classic {g} {p} {s : strategy g p}
-   (classic : forall all_moves, p = player_P -> ~(~play_won_by_P g all_moves) -> play_won_by_P g all_moves)
- : winning_strategy s <-> winning_strategy (~s).
-Proof.
-  unfold winning_strategy.
-  apply forall_iff_compat; intro w.
-  rewrite <- negation_player_follows_strategy.
-  apply imp_iff_compat_l.
-  apply negation_play_won_by_iff_classic.
-  apply classic.
-Qed.  
+
+Definition first_player_wins_game : game.
+refine {| possible_move := unit |}.
+(* TODO: Homework *)
+Defined.
+
+Definition second_player_wins_game : game.
+refine {| possible_move := unit |}.
+(* TODO: Homework *)
+Defined.
   
 End strict.
 
@@ -341,6 +329,8 @@ Record game
 := { possible_move : Type
    ; first_player : player
    ; play_won_by_P : Stream possible_move -> Prop
+   ; play_won_by_O : Stream possible_move -> Prop
+   ; no_duplicate_winner : forall all_moves, play_won_by_P all_moves -> play_won_by_O all_moves -> False
    ; next_player : seq possible_move -> player 
    ; next_move_is_valid : seq possible_move -> possible_move -> bool}.
 
@@ -394,6 +384,30 @@ i = 1,j = 1, outofturn (1,1)(2, 2) (player 1) = false || !next_move_is_valid (1,
 
 
  *)
+ 
+Lemma first_invalid_move_firstn_monotone_plus {g : game} all_moves m n
+ : @first_invalid_move g (Streams.firstn all_moves n) <> None
+    -> first_invalid_move (Streams.firstn all_moves (m + n))
+       = first_invalid_move (Streams.firstn all_moves n).
+Proof.
+  revert all_moves.
+  induction m as [|m IHn]; intros all_moves H.
+  { reflexivity. }
+  { (* TODO *)
+Admitted.
+
+Lemma first_invalid_move_firstn_monotone_lt {g : game} all_moves n m
+ : (n < m)%coq_nat
+    -> @first_invalid_move g (Streams.firstn all_moves n) <> None
+    -> first_invalid_move (Streams.firstn all_moves m)
+       = first_invalid_move (Streams.firstn all_moves n).
+Proof.
+  move => Hnm.
+  assert (H : m = (m - n) + n) by (rewrite -plusE -minusE; lia).
+  rewrite H.
+  apply first_invalid_move_firstn_monotone_plus.
+Qed.
+
 Definition to_strict (g : game) : strict.game.
 refine {| strict.possible_move := possible_move g * seq (possible_move g)
    ; strict.first_player := first_player g
@@ -401,7 +415,55 @@ refine {| strict.possible_move := possible_move g * seq (possible_move g)
    \/ (~(exists n : nat, first_invalid_move (Streams.firstn all_moves n) == Some player_P)
        /\ play_won_by_P g (Streams.flatten all_moves)
     ) 
+   ; strict.play_won_by_O all_moves := (exists n : nat, first_invalid_move (Streams.firstn all_moves n) == Some player_P) 
+   \/ (~(exists n : nat, first_invalid_move (Streams.firstn all_moves n) == Some player_O)
+       /\ play_won_by_O g (Streams.flatten all_moves)
+    )
 |}.
+{ intros all_moves P_winner O_winner.
+  destruct P_winner as [P_winner|P_winner], O_winner as [O_winner|O_winner].
+  { destruct P_winner as [m P_winner].
+    destruct O_winner as [n O_winner].
+    (* TODO: check https://stackoverflow.com/q/69350778 to find a more ssreflect-like way to do this *)
+    destruct (lt_eq_lt_dec n m) as [[H|H]|H].
+    { generalize (first_invalid_move_firstn_monotone_lt all_moves H).
+      revert O_winner P_winner.
+      move /eqP.
+      move ->.
+      move /eqP->.
+      intuition congruence.
+    }
+    { subst.
+      revert P_winner O_winner.
+      move /eqP (* turns first == into = *) -> (* rewrite with first thing *) => // (* finish proof with equality reasoning *) .
+    }
+    {
+      generalize (first_invalid_move_firstn_monotone_lt all_moves H).
+      revert O_winner P_winner.
+      move /eqP.
+      move ->.
+      move /eqP->.
+      intuition congruence. 
+    }
+  }
+  { destruct O_winner as [a b].
+    unfold not in *.
+    auto.
+  }
+  {
+    destruct P_winner as [a b].
+    unfold not in *.
+    auto.
+  }
+  {
+    destruct P_winner as [a b].
+    destruct O_winner as [c d].
+    eapply (no_duplicate_winner g).
+    refine b.
+    refine d.
+  }
+}
+   
 Defined.
 (*Definition player_follows_strategy {g} (p : player) (strat : strategy g p) (history : Stream (possible_move g)) : Prop := later. *)
 End relaxed.
@@ -412,9 +474,13 @@ refine {| relaxed.possible_move := nat * nat
         ; relaxed.first_player := player_P
         ; relaxed.next_player moves_so_far := if Nat.even (List.length moves_so_far) then player_P else player_O
         ; relaxed.play_won_by_P all_moves := exists n : nat, tic_tac_toe.game_outcome (Streams.firstn all_moves n) tic_tac_toe.initial_state == Some tic_tac_toe.player_1
+        ; relaxed.play_won_by_O all_moves := exists n : nat, tic_tac_toe.game_outcome (Streams.firstn all_moves n) tic_tac_toe.initial_state == Some tic_tac_toe.player_2
+        ; relaxed.no_duplicate_winner all_moves P_winner O_winner := _
         ; relaxed.next_move_is_valid := tic_tac_toe.next_move_is_valid_or_game_finished
         |}.
-
+{ simpl in *.
+  (* TODO: Homework *) 
+}
 Defined.
 End tic_tac_toe_relaxed.
 
