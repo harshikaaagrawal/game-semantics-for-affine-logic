@@ -262,10 +262,7 @@ refine {| possible_move := possible_move g
         ; first_player := other_player (first_player g)
         ; play_won_by_P all_moves := play_won_by_O g all_moves 
         ; play_won_by_O all_moves := play_won_by_P g all_moves
-        ; no_duplicate_winner all_moves P_winner O_winner := _ |}.
-simpl in *.
-pose (no_duplicate_winner g).
- exact later. (* TODO: homework or next time *)
+        ; no_duplicate_winner all_moves P_winner O_winner := no_duplicate_winner g all_moves O_winner P_winner |}.
 Defined.
 Notation "~ g" := (negation g) : game_scope.
 
@@ -312,15 +309,54 @@ Proof.
   apply negation_play_won_by.
 Qed.  
 
-Definition first_player_wins_game : game.
-refine {| possible_move := unit |}.
-(* TODO: Homework *)
+Definition first_P__P_wins_game : game.
+refine {| possible_move := unit 
+        ; first_player := player_P
+        ; play_won_by_P all_moves := True
+        ; play_won_by_O all_moves := False 
+        ; no_duplicate_winner all_moves P_wins O_wins := O_wins    
+|}.
 Defined.
 
-Definition second_player_wins_game : game.
-refine {| possible_move := unit |}.
-(* TODO: Homework *)
+Definition first_P__P_wins_strategy {p} : strategy first_P__P_wins_game p := fun all_moves_so_far => tt.
+CoFixpoint first_P__P_wins_trivial_play : play first_P__P_wins_game := Streams.Cons tt first_P__P_wins_trivial_play.
+Lemma first_P__P_wins_player_follows_strategy {p} {s : strategy first_P__P_wins_game p} {all_moves : play first_P__P_wins_game} 
+: player_follows_strategy p s all_moves.
+Proof.
+  unfold player_follows_strategy.
+  intros n Hp.
+  destruct (Streams.nth all_moves n.+1).
+  destruct (s (Streams.firstn all_moves n)).
+  reflexivity.
+Qed.
+Lemma first_P__P_wins_play_won_by {p} {all_moves : play first_P__P_wins_game}
+ : play_won_by p all_moves <-> p = player_P.
+Proof.
+  unfold play_won_by, play_won_by_P, play_won_by_O, first_P__P_wins_game.
+  case: p => //.
+Qed.
+Lemma first_P__P_wins_winning_strategy {p} {s : strategy first_P__P_wins_game p}
+ : winning_strategy s <-> p = player_P.
+Proof.
+  unfold winning_strategy.
+  setoid_rewrite first_P__P_wins_play_won_by.
+  firstorder.
+  eapply H.
+  apply first_P__P_wins_player_follows_strategy.
+  Unshelve.
+  exact first_P__P_wins_trivial_play.
+Qed. 
+
+Definition first_O__O_wins_game : game.
+refine {| possible_move := unit
+        ; first_player := player_O
+        ; play_won_by_P all_moves := False
+        ; play_won_by_O all_moves := True
+        ; no_duplicate_winner all_moves P_wins O_wins := P_wins
+|}.
 Defined.
+
+(* TODO Homework: the same lemmas as above, but for O *)
   
 End strict.
 
