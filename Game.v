@@ -356,6 +356,39 @@ refine {| possible_move := unit
 |}.
 Defined.
 
+Definition first_O__O_wins_strategy {p} : strategy first_O__O_wins_game p := fun all_moves_so_far => tt.
+CoFixpoint first_O__O_wins_trivial_play : play first_O__O_wins_game := Streams.Cons tt first_O__O_wins_trivial_play.
+Lemma first_O__O_wins_player_follows_strategy {p} {s : strategy first_O__O_wins_game p} {all_moves : play first_O__O_wins_game} 
+: player_follows_strategy p s all_moves.
+Proof.
+  unfold player_follows_strategy.
+  intros n Hp.
+  destruct (Streams.nth all_moves n.+1).
+  destruct (s (Streams.firstn all_moves n)).
+  reflexivity.
+Qed.
+
+Lemma first_O__O_wins_play_won_by {p} {all_moves : play first_O__O_wins_game}
+ : play_won_by p all_moves <-> p = player_O.
+Proof.
+  unfold play_won_by, play_won_by_P, play_won_by_O, first_P__P_wins_game.
+  case: p => //.
+Qed.
+
+Lemma first_O__O_wins_winning_strategy {p} {s : strategy first_O__O_wins_game p}
+ : winning_strategy s <-> p = player_O.
+Proof.
+  unfold winning_strategy.
+  setoid_rewrite first_O__O_wins_play_won_by.
+  firstorder.
+  eapply H.
+  apply first_O__O_wins_player_follows_strategy.
+  Unshelve.
+  exact first_P__P_wins_trivial_play.
+Qed. 
+
+
+
 (* TODO Homework: the same lemmas as above, but for O *)
   
 End strict.
