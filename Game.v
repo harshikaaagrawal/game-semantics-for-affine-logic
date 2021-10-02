@@ -20,9 +20,27 @@ Axiom later : forall {T}, T.
 Print iota. 
 Compute iota ?[m] 3.
 Compute zip [:: 1 ; 2 ; 3; 4] [:: "a" ; "b"]%string.
+Module Export List.
 Definition enumerate {A} (s : seq A) : seq (nat*A) := 
 zip (iota 0 (size s)) s.
+
+Section partition_map.
+  Context {A B C}
+          (f : A -> B + C).
+  Fixpoint partition_map (ls  : seq A) : seq B * seq C :=
+    match ls with
+    | [::] => ([::], [::])
+    | x :: xs => let (bs, cs) := partition_map xs in
+                 match f x with
+                 | inl b => (b :: bs, cs)
+                 | inr c => (bs, c :: cs)
+                 end
+    end.
+End partition_map.
+End List.
 Compute enumerate [:: "X" ; "Y"]%string.
+Compute partition_map (fun x => x) [:: inl 2 ; inl 3 ; inr "A" ; inr "B" ]%string.
+Compute partition_map (fun x => if Nat.even x then inl (x / 2) else inr x) [:: 1;2;3;4;5;6;7].
 (*Search (seq ?A -> seq ?B -> seq (?A * ?B)).*) 
 Module tic_tac_toe.
 Notation new_line := (String "010" EmptyString) (only parsing).
@@ -318,8 +336,8 @@ refine {| possible_move := unit
 |}.
 Defined.
 
-Definition first_P__P_wins_strategy {p} : strategy first_P__P_wins_game p := fun all_moves_so_far => tt.
-CoFixpoint first_P__P_wins_trivial_play : play first_P__P_wins_game := Streams.Cons tt first_P__P_wins_trivial_play.
+Definition trivial_strategy {p} : strategy first_P__P_wins_game p := fun all_moves_so_far => tt.
+CoFixpoint trivial_play : play first_P__P_wins_game := Streams.Cons tt trivial_play.
 Lemma first_P__P_wins_player_follows_strategy {p} {s : strategy first_P__P_wins_game p} {all_moves : play first_P__P_wins_game} 
 : player_follows_strategy p s all_moves.
 Proof.
@@ -344,7 +362,7 @@ Proof.
   eapply H.
   apply first_P__P_wins_player_follows_strategy.
   Unshelve.
-  exact first_P__P_wins_trivial_play.
+  exact trivial_play.
 Qed. 
 
 Definition first_O__O_wins_game : game.
@@ -356,8 +374,6 @@ refine {| possible_move := unit
 |}.
 Defined.
 
-Definition first_O__O_wins_strategy {p} : strategy first_O__O_wins_game p := fun all_moves_so_far => tt.
-CoFixpoint first_O__O_wins_trivial_play : play first_O__O_wins_game := Streams.Cons tt first_O__O_wins_trivial_play.
 Lemma first_O__O_wins_player_follows_strategy {p} {s : strategy first_O__O_wins_game p} {all_moves : play first_O__O_wins_game} 
 : player_follows_strategy p s all_moves.
 Proof.
@@ -384,13 +400,9 @@ Proof.
   eapply H.
   apply first_O__O_wins_player_follows_strategy.
   Unshelve.
-  exact first_P__P_wins_trivial_play.
+  exact trivial_play.
 Qed. 
 
-
-
-(* TODO Homework: the same lemmas as above, but for O *)
-  
 End strict.
 
 Module relaxed.
@@ -534,7 +546,36 @@ refine {| strict.possible_move := possible_move g * seq (possible_move g)
 }
    
 Defined.
-(*Definition player_follows_strategy {g} (p : player) (strat : strategy g p) (history : Stream (possible_move g)) : Prop := later. *)
+
+Definition tensor_next_player (p1 : player) (p2 : player) : player := 
+match p1, p2 with
+| player_P, player_P => player_P
+| player_P, player_O => player_P
+| player_O, player_P => player_P
+| player_O, player_O => player_O
+end.
+
+Definition left_game_abandoned_after {g1 g2} (finite_left_moves : strict.position g1) (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)) : Prop := later.
+
+Definition right_game_abandoned_after {g1 g2} (finite_right_moves : strict.position g2) (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)) : Prop := later.
+
+Definition moves_compatible_with {g1 g2} (left_moves : strict.play g1) (right_moves : strict.play g2) (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)) : Prop := later.
+
+Definition tensor_game (g1 : strict.game) (g2 : strict.game) : game.
+refine {| possible_move := strict.possible_move g1 + strict.possible_move g2 
+        ; first_player := tensor_next_player (strict.first_player g1) (strict.first_player g2)
+        ; next_player moves_so_far := let (moves_so_far1, moves_so_far2) := partition_map (fun move => move) moves_so_far in
+                tensor_next_player (strict.next_player moves_so_far1) (strict.next_player moves_so_far2)
+        ; next_move_is_valid moves_so_far next_move := let (moves_so_far1, moves_so_far2) := partition_map (fun move => move) moves_so_far in
+               let next_player := tensor_next_player (strict.next_player moves_so_far1) (strict.next_player moves_so_far2) in 
+               match next_move with 
+               | inl next_move => next_player == strict.next_player moves_so_far1
+               | inr next_move => next_player == strict.next_player moves_so_far2
+               end
+        ; 
+        |}.
+        
+
 End relaxed.
 
 Module tic_tac_toe_relaxed.
