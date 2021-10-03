@@ -219,6 +219,8 @@ Definition prepend {A} (ls : seq A) (s : Stream A) : Stream A
   := prepend_helper s ls.
 CoFixpoint flatten {A} (s : Stream (A * list A)) : Stream A
   := let (x, xs) := Streams.hd s in Streams.Cons x (prepend xs (flatten (Streams.tl s))).
+Axiom extensionality : forall {A} (s1 s2 : Stream A), Streams.EqSt s1 s2 -> s1 = s2.
+Print Streams.EqSt.  
 End Streams.
 
 Declare Scope game_scope.
@@ -555,11 +557,42 @@ match p1, p2 with
 | player_O, player_O => player_O
 end.
 
-Definition left_game_abandoned_after {g1 g2} (finite_left_moves : strict.position g1) (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)) : Prop := later.
+ 
+Definition left_game_abandoned {g1 g2} (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)) : Prop :=
+exists n : nat, forall m : nat, m > n -> forall left_move, Streams.nth all_moves m <> inl left_move. 
 
-Definition right_game_abandoned_after {g1 g2} (finite_right_moves : strict.position g2) (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)) : Prop := later.
+Definition right_game_abandoned {g1 g2} (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)) : Prop :=
+exists n : nat, forall m : nat, m > n -> forall right_move, Streams.nth all_moves m <> inr right_move. 
 
-Definition moves_compatible_with {g1 g2} (left_moves : strict.play g1) (right_moves : strict.play g2) (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)) : Prop := later.
+CoInductive moves_compatible_with {g1 g2} : forall (left_moves : strict.play g1) (right_moves : strict.play g2) (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)), Prop :=
+| moves_compatible_with_left : forall {left_moves right_moves all_moves},
+    Streams.hd all_moves = inl (Streams.hd left_moves)
+    -> moves_compatible_with (Streams.tl left_moves) right_moves (Streams.tl all_moves)
+    -> moves_compatible_with left_moves right_moves all_moves
+| moves_compatible_with_right : forall {left_moves right_moves all_moves},
+    Streams.hd all_moves = inr (Streams.hd right_moves)
+    -> moves_compatible_with left_moves (Streams.tl right_moves) (Streams.tl all_moves)
+    -> moves_compatible_with left_moves right_moves all_moves
+.
+
+
+
+Lemma left_game_not_abandoned_compatible_with_same_game
+  {g1 g2} {left_moves left_moves' : strict.play g1} {right_moves right_moves' : strict.play g2}
+  {all_moves}
+: moves_compatible_with left_moves right_moves all_moves
+  -> moves_compatible_with left_moves' right_moves' all_moves
+  -> ~left_game_abandoned all_moves -> Streams.EqSt left_moves left_moves'.
+Proof.
+Admitted.
+Lemma right_game_not_abandoned_compatible_with_same_game
+  {g1 g2} {left_moves left_moves' : strict.play g1} {right_moves right_moves' : strict.play g2}
+  {all_moves}
+: moves_compatible_with left_moves right_moves all_moves
+  -> moves_compatible_with left_moves' right_moves' all_moves
+  -> ~right_game_abandoned all_moves -> Streams.EqSt right_moves right_moves'.
+Proof.
+Admitted.
 
 Definition tensor_game (g1 : strict.game) (g2 : strict.game) : game.
 refine {| possible_move := strict.possible_move g1 + strict.possible_move g2 
@@ -572,10 +605,111 @@ refine {| possible_move := strict.possible_move g1 + strict.possible_move g2
                | inl next_move => next_player == strict.next_player moves_so_far1
                | inr next_move => next_player == strict.next_player moves_so_far2
                end
-        ; 
+        ; play_won_by_P all_moves := exists right_moves left_moves, moves_compatible_with left_moves right_moves all_moves /\ 
+            ((left_game_abandoned all_moves /\ strict.play_won_by_P g2 right_moves)
+             \/ (right_game_abandoned all_moves /\ strict.play_won_by_P g1 left_moves)
+             \/ (~left_game_abandoned all_moves /\ ~right_game_abandoned all_moves /\ strict.play_won_by_P g1 left_moves /\ strict.play_won_by_P g2 right_moves))
+        ; play_won_by_O all_moves := exists right_moves left_moves, moves_compatible_with left_moves right_moves all_moves /\ 
+            ((~right_game_abandoned all_moves /\ strict.play_won_by_O g2 right_moves)
+             \/ (~left_game_abandoned all_moves /\ strict.play_won_by_O g1 left_moves))
         |}.
-        
-
+  { intros all_moves P_winner O_winner.
+    destruct P_winner as [right_moves P_winner].
+    destruct P_winner as [left_moves P_winner].
+    destruct O_winner as [right_moves' O_winner].
+    destruct O_winner as [left_moves' O_winner].
+    destruct P_winner as [hp_compatible P_winner].
+    destruct O_winner as [ho_compatible O_winner].
+    destruct P_winner as [P_winner | P_winner].
+    {
+      destruct O_winner as [O_winner | O_winner].
+      {
+        destruct P_winner as [left_abandoned right_P_winner].
+        destruct O_winner as [right_not_abandoned right_O_winner].
+        assert (right_moves = right_moves').
+        {
+          apply Streams.extensionality.
+          eapply right_game_not_abandoned_compatible_with_same_game.
+          {
+            exact hp_compatible.
+          }
+          {
+            exact ho_compatible.
+          }
+          {
+            exact right_not_abandoned.
+          }
+        }
+        subst right_moves'.
+        eapply (strict.no_duplicate_winner g2).
+        {
+          exact right_P_winner.
+        }
+        {
+          exact right_O_winner.
+        }
+      }
+      {
+        tauto.
+      }
+     }
+     {
+       destruct P_winner as [P_winner | P_winner].
+       {
+         destruct O_winner as [O_winner | O_winner].
+         {
+           tauto.
+         }
+         {
+           destruct P_winner as [right_abandoned left_P_winner].
+           destruct O_winner as [left_not_abandoned left_O_winner].
+           assert (left_moves = left_moves').
+         {
+           apply Streams.extensionality.
+          eapply left_game_not_abandoned_compatible_with_same_game.
+          {
+            exact hp_compatible.
+          }
+          {
+            exact ho_compatible.
+          }
+          {
+            exact left_not_abandoned.
+          }
+        }
+        subst left_moves'.
+        eapply (strict.no_duplicate_winner g1).
+        {
+          exact left_P_winner.
+        }
+        {
+          exact left_O_winner.
+        }
+      }
+    }
+    {
+      destruct P_winner as [left_not_abandoned P_winner]. 
+      destruct P_winner as [right_not_abandoned P_winner].
+      destruct P_winner as [left_P_winner right_P_winner].
+      destruct O_winner as [O_winner | O_winner].
+      {
+        destruct O_winner as [right_not_abandoned' right_O_winner].
+        assert (right_moves = right_moves').
+        { eapply Streams.extensionality, right_game_not_abandoned_compatible_with_same_game; eassumption. }
+        subst right_moves'.
+        eapply strict.no_duplicate_winner; eassumption.
+      }
+      {
+        destruct O_winner as [left_not_abandoned' left_O_winner].
+        assert (left_moves = left_moves').
+        { eapply Streams.extensionality, left_game_not_abandoned_compatible_with_same_game; eassumption. }
+        subst left_moves'.
+        eapply (strict.no_duplicate_winner g1); eassumption.      
+       }
+     } 
+   }
+ }
+Defined.     
 End relaxed.
 
 Module tic_tac_toe_relaxed.
