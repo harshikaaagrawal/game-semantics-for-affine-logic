@@ -558,41 +558,155 @@ match p1, p2 with
 end.
 
  
-Definition left_game_abandoned {g1 g2} (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)) : Prop :=
-exists n : nat, forall m : nat, m > n -> forall left_move, Streams.nth all_moves m <> inl left_move. 
+Definition left_game_not_abandoned {g1 g2} (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)) : Prop :=
+forall n : nat, exists m : nat, m >= n /\ exists left_move, Streams.nth all_moves m = inl left_move. 
 
-Definition right_game_abandoned {g1 g2} (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)) : Prop :=
-exists n : nat, forall m : nat, m > n -> forall right_move, Streams.nth all_moves m <> inr right_move. 
+Definition right_game_not_abandoned {g1 g2} (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)) : Prop :=
+forall n : nat, exists m : nat, m >= n /\ exists right_move, Streams.nth all_moves m = inr right_move. 
 
-CoInductive moves_compatible_with {g1 g2} : forall (left_moves : strict.play g1) (right_moves : strict.play g2) (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)), Prop :=
-| moves_compatible_with_left : forall {left_moves right_moves all_moves},
-    Streams.hd all_moves = inl (Streams.hd left_moves)
+Lemma left_game_not_abandoned_tl {g1 g2 all_moves}
+: @left_game_not_abandoned g1 g2 all_moves -> @left_game_not_abandoned g1 g2 (Streams.tl all_moves).
+Proof.
+  unfold left_game_not_abandoned.
+  intro Hnot_abandoned.
+  intro n.
+  (* n = m-1 --> n+1 = m *)
+  specialize (Hnot_abandoned (n.+1)).
+  destruct Hnot_abandoned as [m [Hnm Hnot_abandoned]].
+  exists (m.-1).
+  revert Hnm Hnot_abandoned.
+  case: m => //.
+Qed.
+
+Lemma right_game_not_abandoned_tl {g1 g2 all_moves}
+: @right_game_not_abandoned g1 g2 all_moves -> @right_game_not_abandoned g1 g2 (Streams.tl all_moves).
+Proof.
+ (* TODO: Homework *)
+Admitted.
+
+CoInductive moves_compatible_with {g1 g2} (left_moves : strict.play g1) (right_moves : strict.play g2) (all_moves : Stream (strict.possible_move g1 + strict.possible_move g2)) : Prop :=
+| moves_compatible_with_left
+  : Streams.hd all_moves = inl (Streams.hd left_moves)
     -> moves_compatible_with (Streams.tl left_moves) right_moves (Streams.tl all_moves)
     -> moves_compatible_with left_moves right_moves all_moves
-| moves_compatible_with_right : forall {left_moves right_moves all_moves},
-    Streams.hd all_moves = inr (Streams.hd right_moves)
+| moves_compatible_with_right
+  : Streams.hd all_moves = inr (Streams.hd right_moves)
     -> moves_compatible_with left_moves (Streams.tl right_moves) (Streams.tl all_moves)
     -> moves_compatible_with left_moves right_moves all_moves
 .
 
-
+Lemma left_game_not_abandoned_compatible_with_same_game_ex
+  {g1 g2} {left_moves left_moves' : strict.play g1}
+: (exists (right_moves right_moves' : strict.play g2) all_moves,
+   moves_compatible_with left_moves right_moves all_moves
+   /\ moves_compatible_with left_moves' right_moves' all_moves
+   /\ left_game_not_abandoned all_moves)
+  -> Streams.EqSt left_moves left_moves'.
+Proof.
+  revert left_moves left_moves'.
+  cofix CIH.
+  intros left_moves left_moves' Hcompat.
+  constructor.
+  { 
+    destruct Hcompat as [right_moves [right_moves' [all_moves [Hcompat [Hcompat' Hnot_abandoned]]]]].
+    specialize (Hnot_abandoned 0).
+    destruct Hnot_abandoned as [m Hnot_abandoned].
+    destruct Hnot_abandoned as [_ Hnot_abandoned].
+    destruct Hnot_abandoned as [left_move Hnot_abandoned].
+    clear CIH.
+    revert left_moves left_moves' right_moves right_moves' all_moves Hcompat Hcompat' Hnot_abandoned.
+    induction m; intros left_moves left_moves' right_moves right_moves' all_moves Hcompat Hcompat' Hnot_abandoned.
+    { (* case: proof Hnot_abandoned says that move 0 is in the left game *)
+      destruct all_moves, Hcompat, Hcompat'; simpl in *.
+      { clear Hcompat Hcompat' Hnot_abandoned. congruence. }
+      { congruence. }
+      { congruence. }
+      { congruence. }
+    }
+    { (* case: proof Hnot_abandoned says that move m+1 is in the left game *)
+      destruct all_moves, Hcompat, Hcompat'; simpl in *.
+      { (* case: the first move happened to be in the left game anyway *)
+        clear Hcompat Hcompat' Hnot_abandoned. congruence.
+      }
+      { (* contradiction *) congruence. }
+      { (* contradiction *) congruence. }
+      { (* case: first move is in the right game *)
+        eapply IHm; eassumption.
+      }
+    }
+  }
+  {
+    (* For arcane Coq reasons, we need to immediately apply CIH.
+       Things will be easier if we are left with a single conjunctive goal rather than three separate goals *)
+    apply CIH; clear CIH.
+    destruct Hcompat as [right_moves [right_moves' [all_moves [Hcompat [Hcompat' Hnot_abandoned]]]]].
+    pose proof Hnot_abandoned as Hnot_abandoned'.
+    specialize (Hnot_abandoned 0).
+    destruct Hnot_abandoned as [m Hnot_abandoned].
+    destruct Hnot_abandoned as [_ Hnot_abandoned].
+    destruct Hnot_abandoned as [left_move Hnot_abandoned].
+    revert left_moves left_moves' right_moves right_moves' all_moves Hcompat Hcompat' Hnot_abandoned Hnot_abandoned'.
+    induction m; intros left_moves left_moves' right_moves right_moves' all_moves Hcompat Hcompat' Hnot_abandoned Hnot_abandoned'.
+    { (* case: proof Hnot_abandoned says that move 0 is in the left game *)
+      destruct all_moves, Hcompat, Hcompat'; simpl in *.
+      { apply left_game_not_abandoned_tl in Hnot_abandoned'. 
+        simpl in *.
+        eauto 10. }
+      { congruence. }
+      { congruence. }
+      { congruence. }
+    }
+    { (* case: proof Hnot_abandoned says that move m+1 is in the left game *)
+      destruct all_moves, Hcompat, Hcompat'; simpl in *.
+      { (* case: the first move happened to be in the left game anyway *)
+        apply left_game_not_abandoned_tl in Hnot_abandoned'. 
+        simpl in *.
+        eauto 10.
+      }
+      { (* contradiction *) congruence. }
+      { (* contradiction *) congruence. }
+      { (* case: first move is in the right game *)
+        apply left_game_not_abandoned_tl in Hnot_abandoned'.
+        eapply IHm; eassumption.
+      }
+    }
+  }
+Qed. 
 
 Lemma left_game_not_abandoned_compatible_with_same_game
   {g1 g2} {left_moves left_moves' : strict.play g1} {right_moves right_moves' : strict.play g2}
   {all_moves}
 : moves_compatible_with left_moves right_moves all_moves
   -> moves_compatible_with left_moves' right_moves' all_moves
-  -> ~left_game_abandoned all_moves -> Streams.EqSt left_moves left_moves'.
+  -> left_game_not_abandoned all_moves -> Streams.EqSt left_moves left_moves'.
 Proof.
+  intros.
+  eapply left_game_not_abandoned_compatible_with_same_game_ex.
+  eauto 10.
+Qed.
+
+Lemma right_game_not_abandoned_compatible_with_same_game_ex
+  {g1 g2} {right_moves right_moves' : strict.play g2} 
+: (exists (left_moves left_moves' : strict.play g1) all_moves,
+   moves_compatible_with left_moves right_moves all_moves
+   /\ moves_compatible_with left_moves' right_moves' all_moves
+   /\ right_game_not_abandoned all_moves)
+  -> Streams.EqSt right_moves right_moves'.
+Proof.
+  (* TODO: Homework *)
 Admitted.
+
 Lemma right_game_not_abandoned_compatible_with_same_game
   {g1 g2} {left_moves left_moves' : strict.play g1} {right_moves right_moves' : strict.play g2}
   {all_moves}
 : moves_compatible_with left_moves right_moves all_moves
   -> moves_compatible_with left_moves' right_moves' all_moves
-  -> ~right_game_abandoned all_moves -> Streams.EqSt right_moves right_moves'.
+  -> right_game_not_abandoned all_moves -> Streams.EqSt right_moves right_moves'.
 Proof.
-Admitted.
+  intros.
+  eapply right_game_not_abandoned_compatible_with_same_game_ex.
+  eauto 10.
+Qed.
 
 Definition tensor_game (g1 : strict.game) (g2 : strict.game) : game.
 refine {| possible_move := strict.possible_move g1 + strict.possible_move g2 
