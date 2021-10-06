@@ -226,7 +226,7 @@ End Streams.
 Declare Scope game_scope.
 Delimit Scope game_scope with game.
 Declare Scope strategy_scope.
-Delimit Scope strategy_scope with game.
+Delimit Scope strategy_scope with strategy.
 Module strict. 
 Record game
 := { possible_move : Type
@@ -239,8 +239,9 @@ Record game
       roughly the same as
       forall all_moves, (play_won_by_P all_moves /\ play_won_by_O all_moves) -> False *)
     }.
-   
+Module Export game_binding.   
 Bind Scope game_scope with game.
+End game_binding.
 
 Definition position (g : game) : Type
 := seq (possible_move g).
@@ -255,7 +256,9 @@ Definition next_player {g} (p : position g) : player
 Definition strategy g (p : player) : Type
 := forall (pos : position g) (*(h : next_player pos == p)*), possible_move g.
 
+Module Export strategy_binding.
 Bind Scope strategy_scope with strategy.
+End strategy_binding.
 
 Definition player_follows_strategy {g} (p : player) (s : strategy g p) (all_moves : play g) : Prop := 
 forall n : nat, let initial_segment := Streams.firstn all_moves n in 
@@ -404,7 +407,11 @@ Proof.
   Unshelve.
   exact trivial_play.
 Qed. 
-
+Module Export Notations.
+Export game_binding strategy_binding.
+Notation "~ g" := (negation g) : game_scope.
+Notation "~ s" := (negation_strategy s) : strategy_scope.
+End Notations.
 End strict.
 
 Module relaxed.
@@ -714,22 +721,23 @@ Proof.
     clear CIH.
     revert right_moves right_moves' left_moves left_moves' all_moves Hcompat Hcompat' Hnot_abandoned.
     induction m; intros right_moves right_moves' left_moves left_moves' all_moves Hcompat Hcompat' Hnot_abandoned.
-    { (* case: proof Hnot_abandoned says that move 0 is in the left game *)
+    { (* case: proof Hnot_abandoned says that move 0 is in the right game *)
       destruct all_moves, Hcompat, Hcompat'; simpl in *.
-      { clear Hcompat Hcompat' Hnot_abandoned. congruence. }
+      { congruence. }
       { congruence. }
       { congruence. }
       { congruence. }
     }
-    { (* case: proof Hnot_abandoned says that move m+1 is in the left game *)
+    { (* case: proof Hnot_abandoned says that move m+1 is in the right game *)
       destruct all_moves, Hcompat, Hcompat'; simpl in *.
-      { (* case: the first move happened to be in the left game anyway *)
-        clear Hcompat Hcompat' Hnot_abandoned. congruence.
+      { 
+        (* case: first move is in the left game *)
+        eapply IHm; eassumption.
       }
       { (* contradiction *) congruence. }
       { (* contradiction *) congruence. }
-      { (* case: first move is in the right game *)
-        eapply IHm; eassumption.
+      { (* case: the first move happened to be in the rightgame anyway *)
+        clear Hcompat Hcompat' Hnot_abandoned. congruence.
       }
     }
   }
@@ -737,40 +745,39 @@ Proof.
     (* For arcane Coq reasons, we need to immediately apply CIH.
        Things will be easier if we are left with a single conjunctive goal rather than three separate goals *)
     apply CIH; clear CIH.
-    destruct Hcompat as [right_moves [right_moves' [all_moves [Hcompat [Hcompat' Hnot_abandoned]]]]].
+    destruct Hcompat as [left_moves [left_moves' [all_moves [Hcompat [Hcompat' Hnot_abandoned]]]]].
     pose proof Hnot_abandoned as Hnot_abandoned'.
     specialize (Hnot_abandoned 0).
     destruct Hnot_abandoned as [m Hnot_abandoned].
     destruct Hnot_abandoned as [_ Hnot_abandoned].
-    destruct Hnot_abandoned as [left_move Hnot_abandoned].
-    revert left_moves left_moves' right_moves right_moves' all_moves Hcompat Hcompat' Hnot_abandoned Hnot_abandoned'.
-    induction m; intros left_moves left_moves' right_moves right_moves' all_moves Hcompat Hcompat' Hnot_abandoned Hnot_abandoned'.
-    { (* case: proof Hnot_abandoned says that move 0 is in the left game *)
+    destruct Hnot_abandoned as [right_move Hnot_abandoned].
+    revert right_moves right_moves' left_moves left_moves' all_moves Hcompat Hcompat' Hnot_abandoned Hnot_abandoned'.
+    induction m; intros right_moves right_moves' left_moves left_moves' all_moves Hcompat Hcompat' Hnot_abandoned Hnot_abandoned'.
+    { (* case: proof Hnot_abandoned says that move 0 is in the right game *)
       destruct all_moves, Hcompat, Hcompat'; simpl in *.
-      { apply left_game_not_abandoned_tl in Hnot_abandoned'. 
+      { congruence. }
+      { congruence. }
+      { congruence. }
+      { apply right_game_not_abandoned_tl in Hnot_abandoned'. 
         simpl in *.
         eauto 10. }
-      { congruence. }
-      { congruence. }
-      { congruence. }
     }
     { (* case: proof Hnot_abandoned says that move m+1 is in the left game *)
       destruct all_moves, Hcompat, Hcompat'; simpl in *.
-      { (* case: the first move happened to be in the left game anyway *)
-        apply left_game_not_abandoned_tl in Hnot_abandoned'. 
+      { (* case: the first move happened to be in the right game anyway *)
+        apply right_game_not_abandoned_tl in Hnot_abandoned'. 
         simpl in *.
         eauto 10.
       }
       { (* contradiction *) congruence. }
       { (* contradiction *) congruence. }
-      { (* case: first move is in the right game *)
-        apply left_game_not_abandoned_tl in Hnot_abandoned'.
-        eapply IHm; eassumption.
+      { (* case: first move is in the left game *)
+        apply right_game_not_abandoned_tl in Hnot_abandoned'.
+        eauto 10.
       }
     }
   }
 Qed.
-Admitted.
 
 Lemma right_game_not_abandoned_compatible_with_same_game
   {g1 g2} {left_moves left_moves' : strict.play g1} {right_moves right_moves' : strict.play g2}
@@ -784,7 +791,7 @@ Proof.
   eauto 10.
 Qed.
 
-Definition tensor_game (g1 : strict.game) (g2 : strict.game) : game.
+Definition tensor (g1 : strict.game) (g2 : strict.game) : game.
 refine {| possible_move := strict.possible_move g1 + strict.possible_move g2 
         ; first_player := tensor_next_player (strict.first_player g1) (strict.first_player g2)
         ; next_player moves_so_far := let (moves_so_far1, moves_so_far2) := partition_map (fun move => move) moves_so_far in
@@ -899,7 +906,27 @@ refine {| possible_move := strict.possible_move g1 + strict.possible_move g2
      } 
    }
  }
-Defined.     
+Defined.
+
+Definition strict_tensor (g1 : strict.game) (g2 : strict.game) : strict.game :=
+ to_strict (tensor g1 g2).
+Import strict.Notations.
+Print Grammar constr.
+Infix "*" := strict_tensor : game_scope.
+Infix "⊗" := strict_tensor (at level 40, left associativity) : game_scope.
+Check (_ * _)%game.
+
+Definition strict_par (g1 : strict.game) (g2 : strict.game) : strict.game := 
+~((~g1) ⊗ (~g2)).
+
+Infix "~*" := strict_par (at level 40, left associativity) : game_scope.
+
+Module Export Notations.
+Export strict.Notations.
+Infix "*" := strict_tensor : game_scope.
+Infix "⊗" := strict_tensor (at level 40, left associativity) : game_scope.
+Infix "~*" := strict_par (at level 40, left associativity) : game_scope.
+End Notations. 
 End relaxed.
 
 Module tic_tac_toe_relaxed.
@@ -914,10 +941,99 @@ refine {| relaxed.possible_move := nat * nat
         |}.
 { simpl in *.
   (* TODO: Homework *) 
-}
-Defined.
+
+Admitted.
 End tic_tac_toe_relaxed.
 
+Module linear.
+Section with_variables.
+Context {var : Type}.
+Inductive syntax := Var (v : var)
+ | Zero | One 
+ | Tensor (Left : syntax) (Right : syntax)
+ (*| With (Left : syntax) (Right : syntax)
+ | Implication (Left : syntax) (Right : syntax)
+ | Bang (Right : syntax)*).
+End with_variables.
+Global Arguments syntax : clear implicits.
+Module Export SyntaxNotations.
+Declare Scope syntax_scope.
+Delimit Scope syntax_scope with syntax. (* allows writing foo%syntax to mean that foo is in syntax_scope *)
+Bind Scope syntax_scope with syntax. (* means that functions taking variables of type syntax will
+automatically parse those variables in syntax_scope *)
+Print Grammar constr.
+Notation "A * B" := (Tensor A B) : syntax_scope.
+(*Notation "A && B" := (With A B) : syntax_scope.
+Notation "A '-o' B" := (Implication A B) (at level 99) : syntax_scope.
+Notation "! A" := (Bang A) (at level 9, format "! A") : syntax_scope.*)
+Notation "0" := Zero : syntax_scope.
+Notation "1" := One : syntax_scope.
+Reserved Notation "Ctx ||- A" (at level 100, no associativity).
+End SyntaxNotations.
+Scheme Equality for syntax.
+
+(* ssreflect magic to use decidable membership *)
+Lemma syntax_eqbP
+  {var} {var_beq : var -> var -> bool}
+  (H : Equality.axiom var_beq)
+ : Equality.axiom (syntax_beq var_beq).
+Proof.
+  intros A B;
+  unshelve (
+  epose proof (@internal_syntax_dec_bl var var_beq _ A B);
+  epose proof (@internal_syntax_dec_lb var var_beq _ A B)
+  ).
+  { move => x y p; specialize (H x y); revert p H.
+    move => -> H; inversion H; assumption. }
+  { move => x y <-; specialize (H x x).
+    inversion H; congruence. }
+  destruct (@syntax_beq var var_beq A B); constructor.
+  all: intuition congruence.
+Qed.
+Module Export Canonical.
+Canonical syntax_eqMixin {var var_beq var_eqP} := EqMixin (@syntax_eqbP var var_beq var_eqP).
+Canonical syntax_eqType {var var_beq var_eqP} := Eval hnf in EqType (syntax var) (@syntax_eqMixin var var_beq var_eqP).
+End Canonical.
+Module Export Exports.
+Export SyntaxNotations.
+Export Canonical.
+End Exports.
+End linear.
+(*
+Inductive var := tic_tac_toe | nim | chess.
+Definition var_to_game (v : var) : strict.game :=
+match v with
+| tic_tac_toe => tic_tac_toe.tic_tac_toe_strict_game
+| nim => nim.nim_strict_game
+| chess => chess.chess_strict_game
+end.
+*)
+Module linear_to_game.
+Import strict.Notations relaxed.Notations linear.Exports.
+Section with_var.
+Context {var : Type} (var_to_game : var -> strict.game).
+Fixpoint syntax_to_game (s : linear.syntax var) : strict.game :=
+match s with
+ | linear.Var v => var_to_game v
+ | linear.Zero => strict.first_O__O_wins_game
+ | linear.One => strict.first_P__P_wins_game
+ | linear.Tensor Left Right => syntax_to_game Left ⊗ syntax_to_game Right
+end.
+
+(* Given A, B, C, ..., D ||- G, we want to translate this into
+    G ~* (~A) ~* (~B) ~* (~C) ~* ...~* (~D) 
+    assumptions = A, B, C, ..., D
+    conclusion  = G
+    *)
+Local Open Scope game_scope.
+Definition sequent_to_game (assumptions : seq (linear.syntax var)) (conclusion : linear.syntax var) : strict.game :=
+  foldl (fun g1 g2 => (g1) ~* (g2))
+        (syntax_to_game conclusion)
+        (map (fun g => ~syntax_to_game g) assumptions). (*to negate the elements in the sequence*)
+Eval cbv [foldr foldl sequent_to_game map] in sequent_to_game [:: ?[A] ; ?[B] ; ?[C] ; ?[D] ] ?[G].
+Print Assumptions sequent_to_game.
+End with_var.
+End linear_to_game.
 
 
 
