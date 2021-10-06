@@ -16,6 +16,23 @@ Set Boolean Equality Schemes.
 Set Decidable Equality Schemes.
 
 Axiom later : forall {T}, T.
+
+(*
+Transparent some_nat.
+Opaque some_nat.
+Definition some_nat : nat.
+exact 42.
+Defined.
+Definition some_other_nat : nat.
+exact 42.
+Qed.
+Lemma equal_nats : some_nat = some_other_nat.
+Proof.
+  unfold some_nat.
+  unfold some_other_nat.
+Abort.
+*)
+
 (*Search (nat -> seq nat).*)
 Print iota. 
 Compute iota ?[m] 3.
@@ -23,7 +40,29 @@ Compute zip [:: 1 ; 2 ; 3; 4] [:: "a" ; "b"]%string.
 Module Export List.
 Definition enumerate {A} (s : seq A) : seq (nat*A) := 
 zip (iota 0 (size s)) s.
-
+Lemma enumerate_rcons {A} (s : seq A) (v : A)
+: enumerate (rcons s v) = rcons (enumerate s) (size s, v).
+Proof.
+  change (size s) with (0 + size s).
+  unfold enumerate.
+  generalize 0.
+  rewrite size_rcons.
+  induction s as [|s1 ss IHs].
+  { simpl.
+    intro n.
+    rewrite (_ : n + 0 = n) //.
+    rewrite -plusE. lia. }
+  { simpl.
+    intro n.
+    specialize (IHs n.+1).
+    simpl in IHs.
+    rewrite IHs.
+    rewrite (_ : n + (size ss).+1 = n.+1 + size ss) //.
+    rewrite -plusE. lia.
+  }
+Qed.
+Compute enumerate [:: "a" ; "b" ; "c" ]%string.
+(*Search flatten rcons.*) (* flatten_rcons *)
 Section partition_map.
   Context {A B C}
           (f : A -> B + C).
@@ -221,6 +260,18 @@ CoFixpoint flatten {A} (s : Stream (A * list A)) : Stream A
   := let (x, xs) := Streams.hd s in Streams.Cons x (prepend xs (flatten (Streams.tl s))).
 Axiom extensionality : forall {A} (s1 s2 : Stream A), Streams.EqSt s1 s2 -> s1 = s2.
 Print Streams.EqSt.  
+Lemma firstn_succ {A} (s : Stream A) (n : nat) : firstn s (n.+1) = rcons (firstn s n) (nth s n).
+Proof.
+  revert s; induction n as [|n IHn]; intro s.
+  { simpl.
+    reflexivity.
+  } 
+  {
+    simpl in *.
+    apply f_equal.
+    apply IHn.
+  }
+Qed.
 End Streams.
 
 Declare Scope game_scope.
@@ -475,6 +526,45 @@ i = 1,j = 1, outofturn (1,1)(2, 2) (player 1) = false || !next_move_is_valid (1,
 
  *)
  
+Lemma first_invalid_move_of_relaxed_moves_with_player_monotone_app
+  {g : game} moves more_moves
+: @first_invalid_move_of_relaxed_moves_with_player g moves <> None
+ -> first_invalid_move_of_relaxed_moves_with_player (moves ++ more_moves)
+  = first_invalid_move_of_relaxed_moves_with_player moves.
+Proof.
+  unfold first_invalid_move_of_relaxed_moves_with_player.
+  set (moves_so_far := [::]); clearbody moves_so_far.
+  revert moves_so_far more_moves; induction moves as [|first_move rest_moves]; intros.
+  { simpl in *.
+    congruence.
+  }
+  { simpl in *.
+    destruct first_move.
+    destruct (~~ out_of_turn_move moves_so_far p0 &&
+      next_move_is_valid g moves_so_far p).
+      { apply IHrest_moves.
+       congruence.
+      }
+      { 
+        reflexivity. 
+      } 
+  }
+Qed.
+Lemma first_invalid_move_firstn_monotone_succ {g : game} all_moves n
+ : @first_invalid_move g (Streams.firstn all_moves n) <> None
+    -> first_invalid_move (Streams.firstn all_moves n.+1)
+       = first_invalid_move (Streams.firstn all_moves n).
+Proof.
+  rewrite Streams.firstn_succ.
+  generalize (Streams.firstn all_moves n); generalize (Streams.nth all_moves n).
+  intros next_move moves_so_far.
+  clear all_moves n.
+  unfold first_invalid_move.
+  unfold strict_moves_to_relaxed_moves_with_player.
+  rewrite List.enumerate_rcons map_rcons flatten_rcons.
+  apply first_invalid_move_of_relaxed_moves_with_player_monotone_app.
+Qed.
+
 Lemma first_invalid_move_firstn_monotone_plus {g : game} all_moves m n
  : @first_invalid_move g (Streams.firstn all_moves n) <> None
     -> first_invalid_move (Streams.firstn all_moves (m + n))
@@ -483,8 +573,11 @@ Proof.
   revert all_moves.
   induction m as [|m IHn]; intros all_moves H.
   { reflexivity. }
-  { (* TODO *)
-Admitted.
+  { rewrite <- IHn by assumption.
+    rewrite (_ : m.+1 + n = (m + n).+1) //.
+    rewrite first_invalid_move_firstn_monotone_succ //.
+    rewrite IHn //. }
+Qed.
 
 Lemma first_invalid_move_firstn_monotone_lt {g : game} all_moves n m
  : (n < m)%coq_nat
@@ -1032,6 +1125,15 @@ Definition sequent_to_game (assumptions : seq (linear.syntax var)) (conclusion :
         (map (fun g => ~syntax_to_game g) assumptions). (*to negate the elements in the sequence*)
 Eval cbv [foldr foldl sequent_to_game map] in sequent_to_game [:: ?[A] ; ?[B] ; ?[C] ; ?[D] ] ?[G].
 Print Assumptions sequent_to_game.
+(*
+Lemma provable_to_winning_strategy {assumptions conclusion}
+: (assumptions ||- conclusion) -> exists s : strategy (sequent_to_game assumptions conclusion), winning_strategy s.
+*)
+(*
+Lemma winning_strategy_to_provable {assumptions conclusion}
+  (H : assumptions and conclusion are in the appropriately restricted fragment)
+: (exists s : strategy (sequent_to_game assumptions conclusion), winning_strategy s) -> (assumptions ||- conclusion).
+*)
 End with_var.
 End linear_to_game.
 
