@@ -28,8 +28,9 @@ Definition set_cell_in_pile (q : seq nat) (index : nat) (n : nat) (p : player) :
 Definition game_result (current_player : player) : player :=
 other_player current_player.
 
-Definition play_game (q : seq nat) (current_player : player) : player := later. 
-(*takes input, calls make_move*)
+Definition output_result (q : seq nat) (current_player : player) : player := later. 
+foldr String.append ""%string (map).
+Compute output_result seq nat.
 Definition game_state (q : seq nat) (current_player : player) : player := 
 if q == [::] then game_result current_player else play_game q (other_player current_player). 
 
