@@ -33,10 +33,8 @@ Proof.
 Abort.
 *)
 
-(*Search (nat -> seq nat).*)
+
 Print iota. 
-Compute iota ?[m] 3.
-Compute zip [:: 1 ; 2 ; 3; 4] [:: "a" ; "b"]%string.
 Module Export List.
 Definition enumerate {A} (s : seq A) : seq (nat*A) := 
 zip (iota 0 (size s)) s.
@@ -61,8 +59,7 @@ Proof.
     rewrite -plusE. lia.
   }
 Qed.
-Compute enumerate [:: "a" ; "b" ; "c" ]%string.
-(*Search flatten rcons.*) (* flatten_rcons *)
+(* flatten_rcons *)
 Section partition_map.
   Context {A B C}
           (f : A -> B + C).
@@ -77,10 +74,6 @@ Section partition_map.
     end.
 End partition_map.
 End List.
-Compute enumerate [:: "X" ; "Y"]%string.
-Compute partition_map (fun x => x) [:: inl 2 ; inl 3 ; inr "A" ; inr "B" ]%string.
-Compute partition_map (fun x => if Nat.even x then inl (x / 2) else inr x) [:: 1;2;3;4;5;6;7].
-(*Search (seq ?A -> seq ?B -> seq (?A * ?B)).*) 
 Module tic_tac_toe.
 Notation new_line := (String "010" EmptyString) (only parsing).
 Check new_line.
@@ -119,7 +112,6 @@ Definition get_cell (b : board) (r : nat) (c : nat) : cell := nth empty (nth [::
 Definition get_column (b : board) (c : nat) : seq cell :=
 map (fun r => get_cell b r c) [:: 0 ; 1 ; 2 ].
 Definition rows (b: board) : seq (seq cell) := b.
-(*Search seq nat.*)
 Definition columns (b : board) : seq (seq cell) := 
 map (fun c => get_column b c) [:: 0 ; 1 ; 2 ].
 Definition diagonals (b : board) : seq (seq cell) :=
@@ -196,7 +188,6 @@ Compute output_board (fst (make_move initial_board player_1 1 2) ).
 Compute output_board (fst (make_move (fst (make_move initial_board player_1 1 2)) player_2 1 1) ).
 Compute output_board (fst (make_moves [:: (1, 1) ; (2, 2) ; (1, 0) ; (0,0) ; (1, 2)] initial_state)).
 Compute game_result (make_moves [:: (1, 1) ; (2, 2) ; (1, 0) ; (0,0) ; (1, 2)] initial_state).
-(*Search (seq _-> seq _-> bool).*)
 
 Definition next_move_is_valid_or_game_finished (moves_so_far : seq (nat * nat)) (next_move : nat * nat) : bool :=
 next_move_is_valid moves_so_far next_move || (game_outcome moves_so_far initial_state != None).
@@ -243,8 +234,6 @@ match n with
 | S m => nth (Streams.tl s) m
 end.
 CoFixpoint count_up_from (n : nat) : Stream nat := Streams.Cons n (count_up_from (n.+1)).
-Compute nth (count_up_from 3) 5.
-Compute firstn (count_up_from 3) 20.
 (** We need to flip the arguments to appease Coq's guard checker :-/ *)
 Section prepend_helper.
   Context {A : Type} (s : Stream A).
@@ -300,7 +289,6 @@ Definition position (g : game) : Type
 Definition play (g : game) : Type
 := Stream (possible_move g).
 
-(*Search "even" (nat -> bool).*)
 Definition next_player {g} (p : position g) : player
 := if Nat.even (List.length p) then first_player g else other_player (first_player g).
 
@@ -478,11 +466,7 @@ Record game
 
 Definition out_of_turn_move {g} (moves : seq (possible_move g)) (actual_current_player : player) : bool  :=  
 actual_current_player != next_player g moves.
-(*Search ((?A -> seq ?B) -> seq ?A -> seq ?B).
-Search (seq (seq _) -> seq _).
-List.flat_map f s = flatten (List.map f s)*)
-
-
+(*List.flat_map f s = flatten (List.map f s)*)
 
 Definition strict_moves_to_relaxed_moves_with_player {g : game} (moves : seq (possible_move g * seq (possible_move g))) : seq (possible_move g * player).
 refine (flatten _).
