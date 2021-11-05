@@ -1038,7 +1038,7 @@ refine {| relaxed.possible_move := nat * nat
 Admitted.
 End tic_tac_toe_relaxed.
 
-Module linear.
+Module affine.
 Section with_variables.
 Context {var : Type}.
 Inductive syntax := Var (v : var)
@@ -1091,7 +1091,7 @@ Module Export Exports.
 Export SyntaxNotations.
 Export Canonical.
 End Exports.
-End linear.
+End affine.
 (*
 Inductive var := tic_tac_toe | nim | chess.
 Definition var_to_game (v : var) : strict.game :=
@@ -1101,16 +1101,16 @@ match v with
 | chess => chess.chess_strict_game
 end.
 *)
-Module linear_to_game.
-Import strict.Notations relaxed.Notations linear.Exports.
+Module affine_to_game.
+Import strict.Notations relaxed.Notations affine.Exports.
 Section with_var.
 Context {var : Type} (var_to_game : var -> strict.game).
-Fixpoint syntax_to_game (s : linear.syntax var) : strict.game :=
+Fixpoint syntax_to_game (s : affine.syntax var) : strict.game :=
 match s with
- | linear.Var v => var_to_game v
- | linear.Zero => strict.first_O__O_wins_game
- | linear.One => strict.first_P__P_wins_game
- | linear.Tensor Left Right => syntax_to_game Left ⊗ syntax_to_game Right
+ | affine.Var v => var_to_game v
+ | affine.Zero => strict.first_O__O_wins_game
+ | affine.One => strict.first_P__P_wins_game
+ | affine.Tensor Left Right => syntax_to_game Left ⊗ syntax_to_game Right
 end.
 
 (* Given A, B, C, ..., D ||- G, we want to translate this into
@@ -1119,7 +1119,7 @@ end.
     conclusion  = G
     *)
 Local Open Scope game_scope.
-Definition sequent_to_game (assumptions : seq (linear.syntax var)) (conclusion : linear.syntax var) : strict.game :=
+Definition sequent_to_game (assumptions : seq (affine.syntax var)) (conclusion : affine.syntax var) : strict.game :=
   foldl (fun g1 g2 => (g1) ~* (g2))
         (syntax_to_game conclusion)
         (map (fun g => ~syntax_to_game g) assumptions). (*to negate the elements in the sequence*)
@@ -1135,7 +1135,7 @@ Lemma winning_strategy_to_provable {assumptions conclusion}
 : (exists s : strategy (sequent_to_game assumptions conclusion), winning_strategy s) -> (assumptions ||- conclusion).
 *)
 End with_var.
-End linear_to_game.
+End affine_to_game.
 
 
 
