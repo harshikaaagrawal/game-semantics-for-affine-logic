@@ -383,7 +383,7 @@ Proof.
   apply negation_play_won_by.
 Qed.  
 
-Definition first_P__P_wins_game : game.
+Definition top : game.
 refine {| possible_move := unit 
         ; first_player := player_P
         ; play_won_by_P all_moves := True
@@ -392,9 +392,9 @@ refine {| possible_move := unit
 |}.
 Defined.
 
-Definition trivial_strategy {p} : strategy first_P__P_wins_game p := fun all_moves_so_far => tt.
-CoFixpoint trivial_play : play first_P__P_wins_game := Streams.Cons tt trivial_play.
-Lemma first_P__P_wins_player_follows_strategy {p} {s : strategy first_P__P_wins_game p} {all_moves : play first_P__P_wins_game} 
+Definition trivial_strategy {p} : strategy top p := fun all_moves_so_far => tt.
+CoFixpoint trivial_play : play top := Streams.Cons tt trivial_play.
+Lemma top_player_follows_strategy {p} {s : strategy top p} {all_moves : play top} 
 : player_follows_strategy p s all_moves.
 Proof.
   unfold player_follows_strategy.
@@ -403,25 +403,25 @@ Proof.
   destruct (s (Streams.firstn all_moves n)).
   reflexivity.
 Qed.
-Lemma first_P__P_wins_play_won_by {p} {all_moves : play first_P__P_wins_game}
+Lemma top_play_won_by {p} {all_moves : play top}
  : play_won_by p all_moves <-> p = player_P.
 Proof.
-  unfold play_won_by, play_won_by_P, play_won_by_O, first_P__P_wins_game.
+  unfold play_won_by, play_won_by_P, play_won_by_O, top.
   case: p => //.
 Qed.
-Lemma first_P__P_wins_winning_strategy {p} {s : strategy first_P__P_wins_game p}
+Lemma top_winning_strategy {p} {s : strategy top p}
  : winning_strategy s <-> p = player_P.
 Proof.
   unfold winning_strategy.
-  setoid_rewrite first_P__P_wins_play_won_by.
+  setoid_rewrite top_play_won_by.
   firstorder.
   eapply H.
-  apply first_P__P_wins_player_follows_strategy.
+  apply top_player_follows_strategy.
   Unshelve.
   exact trivial_play.
 Qed. 
 
-Definition first_O__O_wins_game : game.
+Definition bot : game.
 refine {| possible_move := unit
         ; first_player := player_O
         ; play_won_by_P all_moves := False
@@ -430,34 +430,35 @@ refine {| possible_move := unit
 |}.
 Defined.
 
-Lemma first_O__O_wins_player_follows_strategy {p} {s : strategy first_O__O_wins_game p} {all_moves : play first_O__O_wins_game} 
+Lemma bot_player_follows_strategy {p} {s : strategy bot p} {all_moves : play bot}
 : player_follows_strategy p s all_moves.
 Proof.
-  unfold player_follows_strategy.
-  intros n Hp.
-  destruct (Streams.nth all_moves n.+1).
-  destruct (s (Streams.firstn all_moves n)).
-  reflexivity.
+unfold player_follows_strategy.
+intros n Hp.
+destruct (Streams.nth all_moves n.+1).
+destruct (s (Streams.firstn all_moves n)).
+reflexivity.
 Qed.
 
-Lemma first_O__O_wins_play_won_by {p} {all_moves : play first_O__O_wins_game}
- : play_won_by p all_moves <-> p = player_O.
+Lemma bot_play_won_by {p} {all_moves : play bot}
+: play_won_by p all_moves <-> p = player_O.
 Proof.
-  unfold play_won_by, play_won_by_P, play_won_by_O, first_P__P_wins_game.
-  case: p => //.
+unfold play_won_by, play_won_by_P, play_won_by_O, top.
+case: p => //.
 Qed.
 
-Lemma first_O__O_wins_winning_strategy {p} {s : strategy first_O__O_wins_game p}
- : winning_strategy s <-> p = player_O.
+Lemma bot_winning_strategy {p} {s : strategy bot p}
+: winning_strategy s <-> p = player_O.
 Proof.
-  unfold winning_strategy.
-  setoid_rewrite first_O__O_wins_play_won_by.
-  firstorder.
-  eapply H.
-  apply first_O__O_wins_player_follows_strategy.
-  Unshelve.
-  exact trivial_play.
-Qed. 
+unfold winning_strategy.
+setoid_rewrite bot_play_won_by.
+firstorder.
+eapply H.
+apply bot_player_follows_strategy.
+Unshelve.
+exact trivial_play.
+Qed.
+
 Module Export Notations.
 Export game_binding strategy_binding.
 Notation "~ g" := (negation g) : game_scope.
@@ -1108,8 +1109,8 @@ Context {var : Type} (var_to_game : var -> strict.game).
 Fixpoint syntax_to_game (s : affine.syntax var) : strict.game :=
 match s with
  | affine.Var v => var_to_game v
- | affine.Zero => strict.first_O__O_wins_game
- | affine.One => strict.first_P__P_wins_game
+ | affine.Zero => strict.bot
+ | affine.One => strict.top
  | affine.Tensor Left Right => syntax_to_game Left ⊗ syntax_to_game Right
 end.
 
