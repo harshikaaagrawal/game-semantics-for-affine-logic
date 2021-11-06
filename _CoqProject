@@ -1,5 +1,6 @@
--R . CoqProject
-tic_tac_toe.v
-Logic.v 
-Game.v
-Linear_Logic.v
+-R . game_semantics_for_affine_logic
+Example_Games/nim.v
+Example_Games/tic_tac_toe.v
+Main/Affine_Logic.v
+Main/Game.v
+Main/Logic.v
