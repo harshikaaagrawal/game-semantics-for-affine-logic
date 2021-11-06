@@ -409,7 +409,7 @@ Proof.
   exact trivial_play.
 Qed. 
 
-Definition bot : game.
+Definition bottom : game.
 refine {| possible_move := unit
         ; first_player := player_O
         ; play_won_by_P all_moves := False
@@ -418,7 +418,7 @@ refine {| possible_move := unit
 |}.
 Defined.
 
-Lemma bot_player_follows_strategy {p} {s : strategy bot p} {all_moves : play bot}
+Lemma bottom_player_follows_strategy {p} {s : strategy bottom p} {all_moves : play bottom}
 : player_follows_strategy p s all_moves.
 Proof.
 unfold player_follows_strategy.
@@ -428,21 +428,21 @@ destruct (s (Streams.firstn all_moves n)).
 reflexivity.
 Qed.
 
-Lemma bot_play_won_by {p} {all_moves : play bot}
+Lemma bottom_play_won_by {p} {all_moves : play bottom}
 : play_won_by p all_moves <-> p = player_O.
 Proof.
 unfold play_won_by, play_won_by_P, play_won_by_O, top.
 case: p => //.
 Qed.
 
-Lemma bot_winning_strategy {p} {s : strategy bot p}
+Lemma bottom_winning_strategy {p} {s : strategy bottom p}
 : winning_strategy s <-> p = player_O.
 Proof.
 unfold winning_strategy.
-setoid_rewrite bot_play_won_by.
+setoid_rewrite bottom_play_won_by.
 firstorder.
 eapply H.
-apply bot_player_follows_strategy.
+apply bottom_player_follows_strategy.
 Unshelve.
 exact trivial_play.
 Qed.
@@ -1093,7 +1093,7 @@ Context {var : Type} (var_to_game : var -> strict.game).
 Fixpoint syntax_to_game (s : affine.syntax var) : strict.game :=
 match s with
  | affine.Var v => var_to_game v
- | affine.Zero => strict.bot
+ | affine.Zero => strict.bottom
  | affine.One => strict.top
  | affine.Tensor Left Right => syntax_to_game Left ⊗ syntax_to_game Right
 end.
