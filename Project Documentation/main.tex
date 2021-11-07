@@ -1,4 +1,4 @@
-5r\documentclass{article}
+\documentclass{article}
 \usepackage[utf8]{inputenc}
 \usepackage{comment}
 \usepackage{xcolor}
@@ -45,7 +45,7 @@ maxbibnames=99
 \addbibresource{main.bib}
 
 \title{Formalizing constructive game semantics for affine logic: A strategy for automated proof search}
-\author{Harshikaa Agrawal \\ \small DPS R.K.\ Puram}
+\author{Harshikaa Agrawal \\ \small Delhi Public School R. K.\ Puram}
 \date{}
 
 \begin{document}
@@ -56,16 +56,15 @@ maxbibnames=99
 \begin{abstract}
     
 
+One of our next technological frontiers is the automation of proof search. Proof assistants like Coq enable this vision by checking the work of proof search algorithms to guarantee correctness. However, currently proof search algorithms rely upon statistics and do not use mathematical abstractions to reduce computational load. 
 
-One of our next technological frontiers is the automation of proof search. Proof assistants like Coq enable this vision by checkingthe work of proof search algorithms to guarantee correctness. However, currently proof search algorithms rely upon statistics and do not use mathematical abstractions to reduce computational load. 
+There is existing research to show isomorphisms between theorems and games, and proofs and winning strategies. This abstraction could significantly aid the automation of proof search, especially given the corpus of work in the automation of finding winning strategies to games.
 
-There is existing research to show isomorphisms between theorems and games, and proofs and winning strategies. This abstraction could significantly aid the automation of proof search, especially given the corpus of work in automation of finding winning strategies to games.
+We build a novel proven-correct library that allows us to use the abstraction of games for proof search. We provide the mathematics to map sequents in affine logic to two player games inside Coq. 
 
-We build a novel proven-correct library that allows us to use the abstraction of games for proof search. We provide the mathematics to maps sequents in affine logic to two player games inside Coq. 
+In the paper, we present a language to express affine logic to Coq and show that the language is consistent, as in Kurt Gödel or model theoretic consistency.  We formalized games, and make design choices so that the mapping of game semantics to affine logic is possible in the constraints of type theory and functional programming; so that the mapping is computable and not just provable, which is important because otherwise, we can’t use strategies to \emph{find} proofs; and so that the structure is highly reusable in proving high powered results that utilize games for automated proof search.
 
-In the paper, we present a language to express affine logic to Coq and show that the language is consistent, as in Kurt Gödel or model theoretic consistency.  We formalized games, and make design choices so that the mapping of game semantics to affine logic is possible in the constraints of type theory and functional programming; so that the mapping is computable and not just provable, which is important because otherwise we can’t use strategies to \emph{find} proofs; and so that the structure is highly reusable in proving high powered results that utilize games for automated proof search.
-
-We also present representative examples of formalizations of high powered theorems using the library, and demonstrate the formalization of games in the library, using the example of tic-tac-toe.
+We also present, representative examples of formalizations of high powered theorems using the library, and demonstrate the formalization of games in the library, using the example of tic-tac-toe.
 
 \end{abstract}
 
@@ -112,7 +111,7 @@ We have built a library in the proof assistant Coq~\cite{coq} that provides the 
 
 In this paper, we present our formalization of affine logic and game semantics; explain the design choices we make so that the formalization can be utilized for our purpose of automated proof search; the seminal definition of our library that translates affine logic sequents into games; representative examples of theorems using our library to connect winning strategies to proofs of sequents; and a representative example of translating popular games for usability in our library.
 
-This project is in the new tradition of libraries at the intersection of programming languages verification and mathematics, which include formalizations of the Feit--Thomson Thoerem~\cite{Gonthier2013}, Category Theory~\cite{category-coq-experience}, Homotopy Type Theory~\cite{Bauer:2017:HLF:3018610.3018615} The Four--Colour Theorem~\cite{gonthier2005computer,gonthier2008formal}, and the proof of the Kepler Conjecture~\cite{hales2015formal}. 
+This project is in the new tradition of libraries at the intersection of programming languages verification and mathematics, which include formalizations of the Feit--Thomson Theorem~\cite{Gonthier2013}, Category Theory~\cite{category-coq-experience}, Homotopy Type Theory~\cite{Bauer:2017:HLF:3018610.3018615} The Four--Colour Theorem~\cite{gonthier2005computer,gonthier2008formal}, and the proof of the Kepler Conjecture~\cite{hales2015formal}. 
 
 
 \section{Project Background}
@@ -284,7 +283,7 @@ Modelling proofs through games allows us to use algorithms that find winning str
 
 In this section, we present the following: our formalization of affine logic; proof that there exists a model theoretic model of affine logic, namely the booleans; our formalization of the definition of game from \textcite{Blass1992} with design changes to meet the constraints of type theory and functional programming; the construction of our seminal definition that maps logical sequents to games while ensuring computability of strategy and reusability of the definition. 
 
-Note that in proof assistants ``definitions'' and ``theorems'' are roughly the same. Any construction where we later need to know the details of how we performed the construction, we call a definition; whereas any construction whose details are irrelevant, we call a theorem.  
+Note that in proof assistants ``definitions'' and ``theorems'' are roughly the same. Any construction where we later need to know the details of how we performed the construction, we call a definition; whereas any construction whose details are irrelevant, we call a theorem. The specifics of these constructions are quite important, as they lend themselves to each other. We share specific code to provide an overview of the structure of our proofs. 
 
 The following are identifiers that appear in the Coq standard library that we shall use, in order of appearance:
 
@@ -701,7 +700,7 @@ Record game
 \verb|Type| is the rough analogue of the collection of sets, a \verb|Record| is how we construct labelled tuples, \verb|Stream| is Coq standard library version of infinite sequences. 
 \end{designchoice}
 \begin{designchoice}
-We introduce the usage of \verb|Prop| instead of \verb|bool| for specifying the subset of plays that are won by $P$. This gives us the power to depend on arbitrarily many moves in order to determine which player wins. If this were not made possible then games like chess would not be formalizable, given that we don't know ahead of time the longest possible game of chess. Furthermore, some of the infinite games that \textcite{Blass1992} takes advantage of to encode constructions in affine logic would be inaccessible to us. 
+ Use of \verb|Prop| instead of \verb|bool| is introduced for specifying the subset of plays that are won by $P$. This gives us the power to depend on arbitrarily many moves in order to determine which player wins. If this were not made possible then games like chess would not be possible to formalize, given that we don't know ahead of time the longest possible game of chess. Furthermore, some of the infinite games that \textcite{Blass1992} takes advantage of to encode constructions in affine logic would be inaccessible to us. 
 \end{designchoice}
 \begin{designchoice}
 Even though proofs are finite objects, we allow infinite games using \verb|Stream| instead of \verb|seq|, and handle infinite sequences as they come up. The problem with finite sequences is that some sequences don't represent complete plays of a game, and some games by design prevent the computation of a winner. For example in the game where the only moves are to ``continue play'' or ``to withdraw'', the strategy of always ``continue play'' is not a guaranteed winning strategy even though it is the only strategy that could yield a win. 
@@ -801,9 +800,9 @@ Definition sequent_to_game (context : seq (@affine.syntax var))
 
 \setcounter{thm}{\value{savethm}}
 
-In order to construct the above proof, we constructed the top game, the bottom game, the negation game, the par game, and the tensor game. To grounded this construction, we constructed a translation from relaxed games to strict games. This enterprise spanned approximately 700 lines of code and 26  definitions (which are theorems) and lemmas. Much of the effort was devoted to proving that these games have no duplicate winner, i.e.\ proving equivalent characterizations of the opponent winning the game. Since this construction is too extensive to be pasted straight, we will now explain the key insights and design choices.
+In order to construct the above proof, we constructed the top game, the bottom game, the negation game, the par game, and the tensor game. To ground this construction, we constructed a translation from relaxed games to strict games. This enterprise spanned approximately 700 lines of code and 26  definitions (which are theorems) and lemmas. Much of the effort was devoted towards proving that these games have no duplicate winner, i.e.\ proving equivalent characterizations of the opponent winning the game. Since this construction is too extensive to be pasted straight, we will now explain the key insights and design choices.
 
-First, here are  snippets that illuminate the structure of what needed to be said about different games. 
+First, here are the snippets of code that illuminate the structure of what needed to be said about different games. 
 
 \begin{verbatim}
 Definition top : game.
@@ -845,7 +844,7 @@ Infix "⊗" := strict_tensor (at level 40, left associativity) : game_scope.
 
 \end{verbatim}
 
-Second, we  explain relaxed games which \textcite{Blass1992} use to define tensor games. The most complex formalization was of the relaxed tensor game which we use to define the strict tensor game. 
+Second, we  explain relaxed games which \textcite{Blass1992} used to define tensor games. The most complex formalization was of the relaxed tensor game which was used by us to define the strict tensor game. 
 
 \textcite[p.~187]{Blass1992} says: 
 
@@ -868,7 +867,7 @@ Record game
    ; next_move_is_valid : seq possible_move -> possible_move -> bool}.    
 \end{verbatim}
 
-We use relaxed games as a stepping stone for building tensor games so that we can factor out the conversion to strict games. Whereas \textcite{Blass1992} is able to do this in 1 sentence, Coq does not allow us to declare truth assertions as ``clear'' and leave the details as an exercise to the reader. So, we embark upon a journey spanning 200 lines of code. Here, we also elide the proofs and write the definitions and lemmas to illuminate the key ideas. 
+We use relaxed games as a stepping stone for building tensor games so that we are able to factor out the conversion to strict games. Though \textcite{Blass1992} is able to do this in 1 sentence, Coq does not allow us to declare truth assertions as ``clear'' and leave the details as an exercise to the reader. So, we embark upon a journey spanning 200 lines of code. Here, we also elide the proofs and write the definitions and lemmas to illuminate the key ideas. 
 
 \begin{verbatim}
 Definition out_of_turn_move {g}
@@ -940,7 +939,8 @@ refine {| strict.possible_move := possible_move g *
 \end{verbatim}
 
 \begin{designchoice}
-Every time it is the turn of player $p$ in the strict game, $p$ must make at least one move. We encode this by declaring that the set $M$ of moves is \verb|possible_move g * seq (possible_move g)|. If this was the case then the formalization would break. 
+In the strict game, every time it is the turn of player $p$, $p$ must make at least one move. We encode this by declaring that the set $M$ of moves is \verb|possible_move g * seq (possible_move g)|. If this wasn't the case then the formalization would break. 
+
 \end{designchoice}
 
 \begin{designchoice}
@@ -1080,9 +1080,11 @@ Without classical axioms we cannot compute whether or not a game was abandoned, 
 
 \section{Examples}
 
-In the previous section, we have described the seminal definition and described the construction of its proof. Using our library gives users a functional programming based framework to write theorems that help utilize winning strategies for proof search. Furthermore users are able to reuse our work and import the design choices required in this domain, including the ones that enable computability. 
+In the previous section, we have described the seminal definition and described the construction of its proof. Our library gives users a functional programming based framework to write theorems that helps utilize winning strategies for proof search. Furthermore users are able to reuse our work and import the design choices required in this domain, including the ones that enable computability. 
 
-In this section, we present a selection of theorems statements for which we have already found proofs using the library, and we present the formalization of tic-tac-toe in our library as a reference point for formalizing other games. 
+In this section, we present a selection of high powered results that can aid the use of winning strategies to find proofs. These results were proven using the library. 
+
+We also present the formalization of tic-tac-toe in our library as a reference point for formalizing other games. We share this in the form of code, as Coq code is essentially mathematics, and the specific structure of the code is quite important. 
 
 \subsection{Theorems}
 
@@ -1233,7 +1235,7 @@ For any strategy $s$ for either player $p$, in any play of the bottom game $p$ f
 
 
 \begin{verbatim}
-Lemma bot_player_follows_strategy {p} {s : strategy bot p} {all_moves : play bot} 
+Lemma bottom_player_follows_strategy {p} {s : strategy bottom p} {all_moves : play bottom} 
 : player_follows_strategy p s all_moves.
 Proof.
   unfold player_follows_strategy.
@@ -1251,7 +1253,7 @@ A play of the bottom game is won by a player iff that player is player $O$.
 \end{thm}
 
 \begin{verbatim}
-Lemma bot_play_won_by {p} {all_moves : play bot}
+Lemma bottom_play_won_by {p} {all_moves : play bottom}
  : play_won_by p all_moves <-> p = player_O.
 Proof.
   unfold play_won_by, play_won_by_P, play_won_by_O, top.
@@ -1265,14 +1267,14 @@ Any strategy in the top game for a player is a winning strategy iff the player i
 \end{thm}
 
 \begin{verbatim}
-Lemma bot_winning_strategy {p} {s : strategy bot p}
+Lemma bottom_winning_strategy {p} {s : strategy bottom p}
  : winning_strategy s <-> p = player_O.
 Proof.
   unfold winning_strategy.
-  setoid_rewrite bot_play_won_by.
+  setoid_rewrite bottom_play_won_by.
   firstorder.
   eapply H.
-  apply bot_player_follows_strategy.
+  apply bottom_player_follows_strategy.
   Unshelve.
   exact trivial_play.
 Qed. 
@@ -1424,6 +1426,8 @@ Definition next_move_is_valid_or_game_finished (moves_so_far : seq (nat * nat))
 
 End tic_tac_toe.
 \end{verbatim}
+
+Above, is the formalization of tic-tac-toe which corresponds to the structure of game semantics. Tic-tac-toe is one of the more complex games to formalize because of its grid-like structure, as opposed to a game like Nim.
 
 \section{Acknowledgments}
 The author acknowledges Jason Gross, PhD, MIT CSAIL for providing expertise on proof assistants and formal logic, and Rajashree Agrawal, Reed College for providing expertise in games. The author is grateful for their generous mentorship and unwavering support.
